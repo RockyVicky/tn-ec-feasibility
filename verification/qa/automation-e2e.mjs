@@ -89,6 +89,12 @@ async function main() {
   ok(c.status === "completed", `status completed through the OTP step (got ${c.status})`);
   ok(c.result?.entries?.length === 2, `entries scraped after OTP`);
 
+  console.log("\n— scanned pre-1987 EC -> OCR + review flag —");
+  const d = await submit({ ...base, surveyNumber: "OLD-88/2" });
+  ok(["completed", "partial"].includes(d.status), `status terminal (got ${d.status})`);
+  ok(d.result?.caveats?.some((x) => x.code === "OCR_LOW_CONFIDENCE"), `OCR_LOW_CONFIDENCE caveat present`);
+  ok((d.result?.entries?.length ?? 0) >= 1, `OCR extracted at least one entry (got ${d.result?.entries?.length})`);
+
   console.log(`\n${fail === 0 ? "\x1b[32m" : "\x1b[31m"}automation e2e: ${pass} passed, ${fail} failed\x1b[0m`);
   killAll();
   process.exit(fail === 0 ? 0 : 1);

@@ -89,11 +89,28 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     if (await page.locator("#err").count()) {
       throw new ProviderError("provider_error", (await page.locator("#err").first().textContent()) ?? "portal error");
     }
-    const html = await page.content();
-    const shot = await page.screenshot();
-    const entries = parseEcHtml(html);
     const now = new Date().toISOString();
-    const { outcome, encumbrancePresent, caveats } = deriveOutcome({ entries, periodFrom: req.period.from, nilHumanVerified: false });
+    const shot = await page.screenshot();
+    let entries: import("../canonical.ts").EcEntry[];
+    const extraCaveats: import("../canonical.ts").Caveat[] = [];
+
+    const scanned = page.locator("#scanned-ec");
+    if (await scanned.count()) {
+      // pre-1987 record served as a scanned image -> OCR, then flag for review
+      ctx.log("automation.scanned_ec");
+      const src = await scanned.getAttribute("src");
+      const imgUrl = src?.startsWith("http") ? src : `${base}${src}`;
+      const png = Buffer.from(await (await fetch(imgUrl)).arrayBuffer());
+      const { ocrEcImage } = await import("../parse/ocr.ts");
+      const ocr = await ocrEcImage(png);
+      entries = ocr.entries;
+      extraCaveats.push({ code: "OCR_LOW_CONFIDENCE", message: `Result read from a scanned image by OCR (confidence ${ocr.confidence.toFixed(0)}%). Every entry must be verified by an operator.` });
+      await ctx.requestHuman({ kind: "ocr_review", context: { rawText: ocr.text.slice(0, 500), fields: entries.map((e) => e.rawInstrumentType) } });
+    } else {
+      entries = parseEcHtml(await page.content());
+    }
+
+    const { outcome, encumbrancePresent, caveats } = deriveOutcome({ entries, periodFrom: req.period.from, nilHumanVerified: false, extraCaveats });
 
     return {
       schemaVersion: "1.0",

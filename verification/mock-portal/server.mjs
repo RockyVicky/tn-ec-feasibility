@@ -17,8 +17,29 @@
  */
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
 
 const PORT = Number(process.argv[process.argv.indexOf("--port") + 1]) || 8170;
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// A "scanned" pre-1987 EC as a PNG (rendered once via Chromium, then cached).
+let scannedPng = null;
+async function getScannedPng() {
+  if (scannedPng) return scannedPng;
+  const { chromium } = await import(pathToFileURL(path.join(HERE, "..", "..", "service", "node_modules", "playwright", "index.mjs")).href);
+  const b = await chromium.launch();
+  const pg = await b.newPage({ viewport: { width: 900, height: 300 } });
+  await pg.setContent(`<div style="font-family:Georgia,serif;font-size:24px;line-height:1.8;padding:24px;background:#fff;color:#000;filter:grayscale(1) contrast(1.1)">
+    <b>ENCUMBRANCE CERTIFICATE (scanned)</b><br>
+    Village THIRUVOTTIYUR Survey No 88/2<br>
+    1. Sale Deed Doc No 442 of 1979 21-06-1979 Rs 45000<br>
+    2. Mortgage Doc No 771 of 1983 03-11-1983 Rs 60000
+  </div>`);
+  scannedPng = await pg.locator("div").first().screenshot();
+  await b.close();
+  return scannedPng;
+}
 const sessions = new Map(); // sid -> { captcha, loggedIn, otp }
 
 const CAPTCHA_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -104,10 +125,24 @@ const server = createServer(async (req, res) => {
       </form>`));
   }
 
+  if (url.pathname === "/portal/scanned.png") {
+    const png = await getScannedPng();
+    res.writeHead(200, { "content-type": "image/png" });
+    return res.end(png);
+  }
+
   if (url.pathname === "/portal/ec-result" && req.method === "POST") {
     if (!sess.loggedIn) { res.writeHead(302, { location: "/portal" }); return res.end(); }
     const f = await body(req);
     if ((f.captcha ?? "").toUpperCase() !== sess.captcha) return send(page("EC", `<p id="err">Wrong CAPTCHA.</p>`), 401);
+
+    // survey starting "OLD" -> pre-1987 record served as a scanned image
+    if (/^OLD/i.test(f.survey ?? "")) {
+      return send(page("EC Result (scanned) — Mock TNREGINET", `
+        <h2>Encumbrance Certificate — Result (pre-1987, scanned)</h2>
+        <p>Village ${f.village ?? ""} · Survey ${f.survey}</p>
+        <img id="scanned-ec" src="/portal/scanned.png" alt="scanned EC">`));
+    }
 
     // survey numbers ending in 7 trigger an OTP step once
     if (/7$/.test(f.survey ?? "") && !sess.otpDone) {
