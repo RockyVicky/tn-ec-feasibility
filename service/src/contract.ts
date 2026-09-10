@@ -53,7 +53,7 @@ export const EcRequestSchema = z
 export type EcRequest = z.infer<typeof EcRequestSchema>;
 
 export type RequestStatusValue =
-  | "queued" | "in_progress" | "needs_human" | "completed" | "partial" | "failed";
+  | "queued" | "in_progress" | "needs_human" | "awaiting_signature" | "completed" | "partial" | "failed";
 
 export type FailureCode =
   | "validation" | "unresolvable" | "portal_unavailable" | "provider_error"
@@ -62,6 +62,7 @@ export type FailureCode =
 
 export interface DeliverableDoc {
   kind: "ec_summary" | "ec_pdf" | "raw_html" | "screenshot";
+  // ec_summary = our rendered summary of retrieved data; ec_pdf = the signed certified copy
   url: string;
   expiresAt: string;
   sha256: string;
@@ -89,7 +90,7 @@ export interface RequestStatus {
 }
 
 export type WebhookEventName =
-  | "ec.received" | "ec.needs_human" | "ec.completed" | "ec.partial" | "ec.failed";
+  | "ec.received" | "ec.needs_human" | "ec.awaiting_signature" | "ec.completed" | "ec.partial" | "ec.failed";
 
 export interface WebhookEvent {
   eventId: string;

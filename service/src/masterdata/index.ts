@@ -67,7 +67,7 @@ export function resolveUnit(input: { zone: string; district?: string; sro: strin
     }
   }
   const sample = [...(sroIndex.get(zone)?.values() ?? [])].slice(0, 8).join(", ");
-  throw new MasterDataError("sroCode", `unknown SRO "${input.sro}" in the ${zone} zone. Examples in ${zone}: ${sample}, …`);
+  throw new MasterDataError("sroCode", `unknown SRO "${input.sro}" in the ${zone} zone. Examples in ${zone}: ${sample}, ...`);
 }
 
 export function listZones(): string[] {

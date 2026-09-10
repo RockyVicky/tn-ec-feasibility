@@ -33,6 +33,12 @@ export interface Config {
   webhookRetry: { attempts: number; baseDelayMs: number };
   /** per-tenant request rate limit (requests / window) */
   rateLimit: { max: number; windowMs: number };
+  /**
+   * Simulated wait for a Sub-Registrar to digitally sign a certified EC. In
+   * reality 1-10 days; short here so the async flow is demonstrable. Real
+   * deployments poll the portal / vendor for the signed copy instead.
+   */
+  certifiedSignDelayMs: number;
 }
 
 export function loadConfig(): Config {
@@ -58,5 +64,6 @@ export function loadConfig(): Config {
     dedupeWindowDays: Number(env("DEDUPE_WINDOW_DAYS", "14")),
     webhookRetry: { attempts: 8, baseDelayMs: 2000 },
     rateLimit: { max: Number(env("RATE_LIMIT_MAX", "120")), windowMs: Number(env("RATE_LIMIT_WINDOW_MS", "60000")) },
+    certifiedSignDelayMs: Number(env("CERTIFIED_SIGN_DELAY_MS", "4000")),
   };
 }

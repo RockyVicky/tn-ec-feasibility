@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-10T19:51:27.715Z",
+  "at": "2026-09-10T20:08:44.716Z",
   "pass": 16,
   "fail": 0,
   "results": [
@@ -13,13 +13,13 @@
       "id": "D2",
       "desc": "all five h2 sections present",
       "status": "PASS",
-      "ms": 22
+      "ms": 24
     },
     {
       "id": "D3",
       "desc": "5 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 93
+      "ms": 88
     },
     {
       "id": "D4",
@@ -43,55 +43,55 @@
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 741
+      "ms": 765
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 718
+      "ms": 747
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 654
+      "ms": 684
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 555
+      "ms": 533
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 555
+      "ms": 544
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 555
+      "ms": 566
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 4997
+      "ms": 5001
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 127
+      "ms": 132
     },
     {
       "id": "C5",
       "desc": "console links to the project dashboard",
       "status": "PASS",
-      "ms": 5
+      "ms": 2
     },
     {
       "id": "C6",

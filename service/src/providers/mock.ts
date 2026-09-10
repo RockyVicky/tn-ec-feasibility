@@ -84,7 +84,7 @@ export class MockProvider implements EcProvider {
       provenance: {
         source: "mock",
         sourceReference: `MOCK-${ctx.requestId.slice(0, 8)}`,
-        certified: req.certified,
+        certified: false, // the pipeline runs the payment + SRO-signing flow for certified requests
         retrievedAt: now,
         operatorId: nilHumanVerified ? "auto" : null,
         rawArtifactRefs: [],

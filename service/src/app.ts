@@ -97,7 +97,10 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 
   const providers = opts.providers ?? buildProviders(config);
   const router = new ProviderRouter(orderProviders(providers, config.providerOrder));
-  const pipeline = createPipeline({ store, router, webhooks, hitl, storage, config, log });
+  const pipeline = createPipeline({
+    store, router, webhooks, hitl, storage, config, log,
+    enqueueDelayed: (id, ms) => queue.add({ requestId: id }, { delayMs: ms }).then(() => undefined),
+  });
 
   queue.process(async (job) => {
     const t = metrics.timer("pipeline_run");

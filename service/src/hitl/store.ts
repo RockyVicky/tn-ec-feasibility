@@ -70,5 +70,6 @@ function autoAnswer(task: HitlTask): HitlAnswer {
     case "otp": return { kind: "otp", value: mock || "000000" };
     case "nil_review": return { kind: "nil_review", confirmedNil: false, note: "auto (phase-0)" };
     case "ocr_review": return { kind: "ocr_review", corrections: {}, note: "auto (phase-0)" };
+    case "payment": return { kind: "payment", approved: true, reference: "AUTO-PAY", note: "auto (phase-0)" };
   }
 }

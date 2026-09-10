@@ -58,7 +58,7 @@ function startService(name, port, env) {
   // No shell: p.pid is the real node process so p.kill() works on Windows.
   const p = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
     cwd: SERVICE_DIR,
-    env: { ...process.env, PORT: String(port), LOG_LEVEL: "silent", WEBHOOK_SIGNING_SECRET: SECRET, TENANT_KEYS: JSON.stringify({ qa: TENANT_KEY }), ...env },
+    env: { ...process.env, PORT: String(port), LOG_LEVEL: "silent", WEBHOOK_SIGNING_SECRET: SECRET, TENANT_KEYS: JSON.stringify({ qa: TENANT_KEY }), RATE_LIMIT_MAX: "100000", CERTIFIED_SIGN_DELAY_MS: "800", ...env },
     stdio: "ignore",
     windowsHide: true,
   });
@@ -195,12 +195,27 @@ async function run() {
     assert(dt < 400, `second served fast (dedupe) — took ${dt}ms`);
   });
 
-  await check("TC5b", "boundary", "certified request is NOT deduped", async () => {
+  await check("TC5b", "functional", "certified EC: payment -> awaiting_signature -> signed", async () => {
     const survey = "48" + Date.now().toString().slice(-4);
     const prop = { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: survey, subdivisionNumber: "1" };
-    const a = await submitAndWait(A, { certified: true, property: prop });
+    const a = await submitAndWait(A, { certified: true, property: prop }, 12000);
     eq(a.certified, true, "certified flag");
-    assert(a.estimate?.type === "days", "certified estimate in days");
+    eq(a.status, "completed", "eventually completed");
+    eq(a.result?.provenance?.certified, true, "result marked certified/signed");
+    assert(a.result?.caveats?.some((c) => c.code === "CERTIFIED_COPY_SIGNED"), "signed caveat present");
+    assert(a.documents?.some((d) => d.kind === "ec_pdf"), "signed PDF document delivered");
+  });
+
+  await check("RL1", "robustness", "per-tenant rate limit returns 429 with Retry-After", async () => {
+    const R = startService("RL", 8109, { PROVIDER_ORDER: "mock", HITL_MODE: "auto", RATE_LIMIT_MAX: "5", RATE_LIMIT_WINDOW_MS: "60000" });
+    await waitHealthy(R);
+    let got429 = false, retryAfter = null;
+    for (let i = 0; i < 12; i++) {
+      const r = await post(R, body({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "T", surveyNumber: `4${i}` } }));
+      if (r.status === 429) { got429 = true; retryAfter = r.headers.get("retry-after"); break; }
+    }
+    assert(got429, "429 after exceeding the limit");
+    assert(Number(retryAfter) > 0, `Retry-After header present (${retryAfter})`);
   });
 
   // ===== Negative / robustness =====

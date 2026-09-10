@@ -7,6 +7,7 @@ const AnswerSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("otp"), value: z.string().min(1) }),
   z.object({ kind: z.literal("nil_review"), confirmedNil: z.boolean(), note: z.string().optional() }),
   z.object({ kind: z.literal("ocr_review"), corrections: z.record(z.string()), note: z.string().optional() }),
+  z.object({ kind: z.literal("payment"), approved: z.boolean(), reference: z.string().optional(), note: z.string().optional() }),
 ]);
 
 /** Operator console API. In production this sits behind SSO + an operator role. */

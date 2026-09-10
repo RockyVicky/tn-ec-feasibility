@@ -58,6 +58,32 @@ describe("request lifecycle (mock provider)", () => {
   });
 });
 
+describe("certified EC async flow", () => {
+  it("goes payment -> awaiting_signature -> completed with a signed doc", async () => {
+    const { app, webhooks } = await makeApp({ CERTIFIED_SIGN_DELAY_MS: "300" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/ec-requests",
+      headers: { ...AUTH, "idempotency-key": "cert-flow-0001" },
+      payload: sampleBody({ certified: true, property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }),
+    });
+    const id = res.json().requestId as string;
+    expect(res.json().estimate).toEqual({ type: "days", value: 5 });
+
+    const final = await waitForTerminal(app, id, 6000);
+    expect(final.status).toBe("completed");
+    expect(final.result?.provenance.certified).toBe(true);
+    expect(final.result?.caveats.some((c) => c.code === "CERTIFIED_COPY_SIGNED")).toBe(true);
+    expect(final.documents.some((d) => d.kind === "ec_pdf")).toBe(true);
+
+    // the ERP saw the payment prompt and the awaiting-signature state
+    expect(webhooks.byName("ec.needs_human").length).toBeGreaterThanOrEqual(1);
+    expect(webhooks.byName("ec.awaiting_signature")).toHaveLength(1);
+    expect(webhooks.byName("ec.completed")).toHaveLength(1);
+    await app.close();
+  });
+});
+
 describe("dedupe", () => {
   it("serves a second identical informational request from cache", async () => {
     const { app } = await makeApp({ DEDUPE_WINDOW_DAYS: "14" });
