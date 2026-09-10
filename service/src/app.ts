@@ -6,13 +6,18 @@ import fastifyStatic from "@fastify/static";
 
 import { loadConfig, type Config } from "./config.ts";
 import { EcRequestSchema, type RequestStatus } from "./contract.ts";
+import { openDb, type Db } from "./db/pg.ts";
 import { MemoryRequestStore } from "./store/memory.ts";
+import { PostgresRequestStore } from "./store/postgres.ts";
 import type { RequestStore, StoredRequest } from "./store/types.ts";
 import { MemoryQueue } from "./queue/memory.ts";
+import { PostgresQueue } from "./queue/postgres.ts";
 import type { Queue } from "./queue/types.ts";
 import { MemoryHitlStore } from "./hitl/store.ts";
 import type { HitlStore } from "./hitl/types.ts";
 import { registerHitlRoutes } from "./hitl/routes.ts";
+import { MemoryObjectStore, LocalObjectStore } from "./storage/index.ts";
+import type { ObjectStore } from "./storage/types.ts";
 import { ProviderRouter } from "./providers/router.ts";
 import type { EcProvider } from "./providers/types.ts";
 import { MockProvider } from "./providers/mock.ts";
@@ -20,10 +25,10 @@ import { LandeedProvider } from "./providers/landeed.ts";
 import { SurepassProvider } from "./providers/surepass.ts";
 import { AutomationProvider } from "./providers/automation.ts";
 import { HttpWebhookDeliverer, type WebhookDeliverer } from "./webhook/deliver.ts";
-import { createPipeline } from "./pipeline.ts";
+import { createPipeline, type Pipeline } from "./pipeline.ts";
 import { paramHash } from "./util/hash.ts";
 import { coverage } from "./masterdata/index.ts";
-import type { Pipeline } from "./pipeline.ts";
+import { metrics } from "./metrics.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -32,7 +37,9 @@ declare module "fastify" {
       hitl: HitlStore;
       queue: Queue<{ requestId: string }>;
       pipeline: Pipeline;
+      storage: ObjectStore;
       config: Config;
+      db?: Db;
     };
   }
   interface FastifyRequest {
@@ -47,38 +54,85 @@ export interface BuildOptions {
   providers?: EcProvider[];
   webhooks?: WebhookDeliverer;
   queue?: Queue<{ requestId: string }>;
+  storage?: ObjectStore;
 }
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
+const OPEN_PREFIXES = ["/healthz", "/metrics", "/ops", "/public", "/dashboard", "/demo", "/v1/documents"];
 
 export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance> {
   const config: Config = { ...loadConfig(), ...opts.config };
   const app = Fastify({ logger: { level: config.logLevel } });
   const log = (event: string, data?: Record<string, unknown>) => app.log.info({ event, ...data });
 
-  const store = opts.store ?? new MemoryRequestStore();
+  // ---- backend wiring ----
+  let db: Db | undefined;
+  let store: RequestStore;
+  let queue: Queue<{ requestId: string }>;
+
+  if (opts.store && opts.queue) {
+    store = opts.store;
+    queue = opts.queue;
+  } else if (config.backend === "postgres") {
+    db = await openDb(config.databaseUrl);
+    store = opts.store ?? new PostgresRequestStore(db);
+    queue = opts.queue ?? new PostgresQueue<{ requestId: string }>(db, "ec");
+  } else {
+    store = opts.store ?? new MemoryRequestStore();
+    queue =
+      opts.queue ??
+      new MemoryQueue<{ requestId: string }>({ maxAttempts: 5, baseDelayMs: 1000, onDlq: (job, err) => app.log.error({ event: "dlq", job: job.id, err: String(err) }) });
+  }
+
+  const storage: ObjectStore =
+    opts.storage ??
+    (config.storage.startsWith("local:")
+      ? new LocalObjectStore(config.webhookSigningSecret, config.storage.slice("local:".length))
+      : new MemoryObjectStore(config.webhookSigningSecret));
+
   const hitl = opts.hitl ?? new MemoryHitlStore(config.hitlMode);
   const webhooks =
     opts.webhooks ??
     new HttpWebhookDeliverer(config.webhookSigningSecret, config.webhookRetry, (e, d) => app.log.info({ event: e, ...d }));
 
-  const providers =
-    opts.providers ??
-    buildProviders(config);
+  const providers = opts.providers ?? buildProviders(config);
   const router = new ProviderRouter(orderProviders(providers, config.providerOrder));
-  const pipeline = createPipeline({ store, router, webhooks, hitl, config, log });
+  const pipeline = createPipeline({ store, router, webhooks, hitl, storage, config, log });
 
-  const queue: Queue<{ requestId: string }> =
-    opts.queue ?? new MemoryQueue<{ requestId: string }>({ maxAttempts: 5, baseDelayMs: 1000, onDlq: (job, err) => app.log.error({ event: "dlq", job: job.id, err: String(err) }) });
-  queue.process(async (job) => pipeline.run(job.payload.requestId));
+  queue.process(async (job) => {
+    const t = metrics.timer("pipeline_run");
+    try {
+      await pipeline.run(job.payload.requestId);
+    } finally {
+      t();
+    }
+  });
 
-  // ---- auth ----
+  // ---- auth + rate limit ----
+  const buckets = new Map<string, { count: number; resetAt: number }>();
   app.addHook("onRequest", async (req, reply) => {
-    if (req.url === "/healthz" || req.url.startsWith("/ops") || req.url.startsWith("/public") || req.url === "/" || req.url.startsWith("/dashboard") || req.url.startsWith("/demo")) return;
+    metrics.inc("http_requests_total");
+    if (OPEN_PREFIXES.some((p) => req.url === p || req.url.startsWith(p + "/") || req.url.startsWith(p + "?")) || req.url === "/") return;
+
     const key = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     const tenant = Object.entries(config.tenantKeys).find(([, v]) => v === key)?.[0];
-    if (!tenant) return reply.code(401).send({ error: "unauthorized" });
-    (req as { tenant?: string }).tenant = tenant;
+    if (!tenant) {
+      metrics.inc("auth_rejected_total");
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+    req.tenant = tenant;
+
+    const now = Date.now();
+    const b = buckets.get(tenant);
+    if (!b || b.resetAt < now) {
+      buckets.set(tenant, { count: 1, resetAt: now + config.rateLimit.windowMs });
+    } else if (b.count >= config.rateLimit.max) {
+      metrics.inc("rate_limited_total");
+      reply.header("retry-after", Math.ceil((b.resetAt - now) / 1000));
+      return reply.code(429).send({ error: "rate_limited" });
+    } else {
+      b.count += 1;
+    }
   });
 
   // ---- API ----
@@ -94,10 +148,8 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 
     const existing = await store.findByIdempotencyKey(idem);
     if (existing) {
-      if (existing.paramHash !== paramHash(parsed.data)) {
-        return reply.code(409).send({ error: "idempotency_conflict" });
-      }
-      return reply.code(200).send(publicStatus(existing));
+      if (existing.paramHash !== paramHash(parsed.data)) return reply.code(409).send({ error: "idempotency_conflict" });
+      return reply.code(200).send(existing.status);
     }
 
     const requestId = randomUUID();
@@ -122,9 +174,10 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
       paramHash: paramHash(parsed.data),
       createdAt: now,
       updatedAt: now,
-      audit: [{ at: now, event: "received", detail: { tenant: (req as { tenant?: string }).tenant } }],
+      audit: [{ at: now, event: "received", detail: { tenant: req.tenant } }],
     };
     await store.create(rec);
+    metrics.inc("ec_requests_total");
     void webhooks.send("ec.received", status, parsed.data.callbackUrl);
     await queue.add({ requestId });
 
@@ -134,26 +187,47 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
   app.get("/v1/ec-requests/:id", async (req, reply) => {
     const rec = await store.get((req.params as { id: string }).id);
     if (!rec) return reply.code(404).send({ error: "not_found" });
-    return publicStatus(rec);
+    return rec.status;
+  });
+
+  // ---- documents (signed, no bearer needed) ----
+  app.get("/v1/documents/*", async (req, reply) => {
+    const key = decodeURIComponent((req.params as Record<string, string>)["*"] ?? "");
+    const { exp, token } = req.query as { exp?: string; token?: string };
+    if (!storage.verify(key, exp ?? "", token ?? "")) return reply.code(403).send({ error: "bad_or_expired_token" });
+    const obj = await storage.get(key);
+    if (!obj) return reply.code(404).send({ error: "not_found" });
+    metrics.inc("documents_served_total");
+    return reply.type(obj.contentType).send(obj.data);
   });
 
   // ---- ops / HITL ----
   registerHitlRoutes(app, hitl);
   app.get("/ops/coverage", async () => coverage());
 
-  // ---- health + static ----
-  app.get("/healthz", async () => ({ ok: true, providers: providers.map((p) => p.name), backend: config.backend }));
+  // ---- observability ----
+  app.get("/metrics", async (_req, reply) => reply.type("text/plain").send(metrics.prometheus()));
+  app.get("/healthz", async () => ({
+    ok: true,
+    backend: config.backend,
+    storage: config.storage.startsWith("local:") ? "local" : "memory",
+    providers: providers.map((p) => p.name),
+    db: db ? "connected" : "n/a",
+  }));
+
+  // ---- static ----
   await app.register(fastifyStatic, { root: PUBLIC_DIR, prefix: "/public/" });
   app.get("/", async (_req, reply) => reply.redirect("/public/console.html"));
   app.get("/dashboard", async (_req, reply) => reply.redirect("/public/dashboard.html"));
   app.get("/demo", async (_req, reply) => reply.redirect("/public/demo.html"));
 
-  app.decorate("_internals", { store, hitl, queue, pipeline, config });
-  return app;
-}
+  app.addHook("onClose", async () => {
+    await queue.close();
+    if (db) await db.close();
+  });
 
-function publicStatus(rec: StoredRequest): RequestStatus {
-  return rec.status;
+  app.decorate("_internals", { store, hitl, queue, pipeline, storage, config, db });
+  return app;
 }
 
 function buildProviders(config: Config): EcProvider[] {

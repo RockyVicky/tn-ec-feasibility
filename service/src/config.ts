@@ -13,9 +13,11 @@ function env(key: string, fallback?: string): string {
 export interface Config {
   port: number;
   logLevel: string;
-  backend: "memory" | "postgres+redis";
+  /** "memory" = in-process everything; "postgres" = Postgres store + durable queue */
+  backend: "memory" | "postgres";
   databaseUrl: string;
-  redisUrl: string;
+  /** "memory" | "local:<dir>" object store for EC documents */
+  storage: string;
   providerOrder: string[];
   webhookSigningSecret: string;
   tenantKeys: Record<string, string>;
@@ -28,6 +30,8 @@ export interface Config {
   dedupeWindowDays: number;
   /** ASSUMPTION (A6): webhook delivery retry budget. */
   webhookRetry: { attempts: number; baseDelayMs: number };
+  /** per-tenant request rate limit (requests / window) */
+  rateLimit: { max: number; windowMs: number };
 }
 
 export function loadConfig(): Config {
@@ -35,8 +39,8 @@ export function loadConfig(): Config {
     port: Number(env("PORT", "8080")),
     logLevel: env("LOG_LEVEL", "info"),
     backend: env("BACKEND", "memory") as Config["backend"],
-    databaseUrl: env("DATABASE_URL", "postgres://ec:ec@localhost:5432/ec"),
-    redisUrl: env("REDIS_URL", "redis://localhost:6379"),
+    databaseUrl: env("DATABASE_URL", "pglite://memory"),
+    storage: env("STORAGE", "memory"),
     providerOrder: env("PROVIDER_ORDER", "mock").split(",").map((s) => s.trim()).filter(Boolean),
     webhookSigningSecret: env("WEBHOOK_SIGNING_SECRET", "dev-secret-change-me"),
     tenantKeys: JSON.parse(env("TENANT_KEYS", '{"erp-staging":"dev-tenant-key"}')),
@@ -47,5 +51,6 @@ export function loadConfig(): Config {
     },
     dedupeWindowDays: Number(env("DEDUPE_WINDOW_DAYS", "14")),
     webhookRetry: { attempts: 8, baseDelayMs: 2000 },
+    rateLimit: { max: Number(env("RATE_LIMIT_MAX", "120")), windowMs: Number(env("RATE_LIMIT_WINDOW_MS", "60000")) },
   };
 }

@@ -1,47 +1,98 @@
 /**
- * Postgres-backed RequestStore — Phase 1 implementation sketch.
- *
- * Not wired into the default build (BACKEND=memory). Kept here so the schema and
- * query shape are reviewable now. To activate: add `pg` to dependencies, set
- * BACKEND=postgres+redis, and register this in src/app.ts.
- *
- * Schema:
- *
- *   CREATE TABLE ec_requests (
- *     request_id       uuid PRIMARY KEY,
- *     idempotency_key  text UNIQUE NOT NULL,
- *     param_hash       text NOT NULL,
- *     status           text NOT NULL,
- *     certified        boolean NOT NULL,
- *     reference        text,
- *     request_json     jsonb NOT NULL,
- *     status_json      jsonb NOT NULL,
- *     created_at       timestamptz NOT NULL DEFAULT now(),
- *     updated_at       timestamptz NOT NULL DEFAULT now()
- *   );
- *   CREATE INDEX ec_requests_param_hash_idx ON ec_requests (param_hash, created_at DESC)
- *     WHERE status = 'completed';
- *
- *   CREATE TABLE ec_request_audit (
- *     id          bigserial PRIMARY KEY,
- *     request_id  uuid NOT NULL REFERENCES ec_requests(request_id),
- *     at          timestamptz NOT NULL DEFAULT now(),
- *     event       text NOT NULL,
- *     detail      jsonb
- *   );
+ * Postgres-backed RequestStore. Runs on PGlite in dev/test and on a real Postgres
+ * in production (same SQL). Replaces store/memory.ts when BACKEND=postgres.
  */
+import type { Db } from "../db/pg.ts";
 import type { RequestStore, StoredRequest } from "./types.ts";
-import type { RequestStatus } from "../contract.ts";
+import type { EcRequest, RequestStatus } from "../contract.ts";
+
+interface Row {
+  request_id: string;
+  idempotency_key: string;
+  param_hash: string;
+  request_json: EcRequest;
+  status_json: RequestStatus;
+  created_at: string;
+  updated_at: string;
+}
 
 export class PostgresRequestStore implements RequestStore {
-  constructor(private readonly _databaseUrl: string) {}
+  constructor(private readonly db: Db) {}
 
-  private nyi(): never {
-    throw new Error("PostgresRequestStore not implemented — see file header. Use BACKEND=memory for now.");
+  private async hydrate(row: Row): Promise<StoredRequest> {
+    const audit = await this.db.query<{ at: string; event: string; detail: unknown }>(
+      `SELECT at, event, detail FROM ec_request_audit WHERE request_id = $1 ORDER BY at, id`,
+      [row.request_id],
+    );
+    return {
+      status: row.status_json,
+      request: row.request_json,
+      idempotencyKey: row.idempotency_key,
+      paramHash: row.param_hash,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString(),
+      audit: audit.rows.map((r) => ({ at: new Date(r.at).toISOString(), event: r.event, detail: r.detail ?? undefined })),
+    };
   }
-  async create(_rec: StoredRequest): Promise<void> { this.nyi(); }
-  async get(_requestId: string): Promise<StoredRequest | undefined> { this.nyi(); }
-  async update(_requestId: string, _patch: Partial<RequestStatus>, _auditEvent: string, _detail?: unknown): Promise<StoredRequest> { this.nyi(); }
-  async findByIdempotencyKey(_key: string): Promise<StoredRequest | undefined> { this.nyi(); }
-  async findRecentByParamHash(_paramHash: string, _since: Date): Promise<StoredRequest | undefined> { this.nyi(); }
+
+  async create(rec: StoredRequest): Promise<void> {
+    await this.db.query(
+      `INSERT INTO ec_requests (request_id, idempotency_key, param_hash, status, certified, reference, request_json, status_json, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb, now(), now())`,
+      [
+        rec.status.requestId,
+        rec.idempotencyKey,
+        rec.paramHash,
+        rec.status.status,
+        rec.status.certified,
+        rec.status.reference ?? null,
+        JSON.stringify(rec.request),
+        JSON.stringify(rec.status),
+      ],
+    );
+    for (const a of rec.audit) {
+      await this.db.query(`INSERT INTO ec_request_audit (request_id, event, detail) VALUES ($1,$2,$3::jsonb)`, [
+        rec.status.requestId,
+        a.event,
+        a.detail === undefined ? null : JSON.stringify(a.detail),
+      ]);
+    }
+  }
+
+  async get(requestId: string): Promise<StoredRequest | undefined> {
+    const r = await this.db.query<Row>(`SELECT * FROM ec_requests WHERE request_id = $1`, [requestId]);
+    return r.rows[0] ? this.hydrate(r.rows[0]) : undefined;
+  }
+
+  async update(requestId: string, patch: Partial<RequestStatus>, auditEvent: string, detail?: unknown): Promise<StoredRequest> {
+    const cur = await this.db.query<Row>(`SELECT * FROM ec_requests WHERE request_id = $1`, [requestId]);
+    const row = cur.rows[0];
+    if (!row) throw new Error(`no such request ${requestId}`);
+    const status = { ...row.status_json, ...patch };
+    await this.db.query(
+      `UPDATE ec_requests SET status = $2, status_json = $3::jsonb, updated_at = now() WHERE request_id = $1`,
+      [requestId, status.status, JSON.stringify(status)],
+    );
+    await this.db.query(`INSERT INTO ec_request_audit (request_id, event, detail) VALUES ($1,$2,$3::jsonb)`, [
+      requestId,
+      auditEvent,
+      detail === undefined ? null : JSON.stringify(detail),
+    ]);
+    return (await this.get(requestId))!;
+  }
+
+  async findByIdempotencyKey(key: string): Promise<StoredRequest | undefined> {
+    const r = await this.db.query<Row>(`SELECT * FROM ec_requests WHERE idempotency_key = $1`, [key]);
+    return r.rows[0] ? this.hydrate(r.rows[0]) : undefined;
+  }
+
+  async findRecentByParamHash(paramHash: string, since: Date): Promise<StoredRequest | undefined> {
+    const r = await this.db.query<Row>(
+      `SELECT * FROM ec_requests
+       WHERE param_hash = $1 AND status = 'completed' AND created_at >= $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [paramHash, since.toISOString()],
+    );
+    return r.rows[0] ? this.hydrate(r.rows[0]) : undefined;
+  }
 }

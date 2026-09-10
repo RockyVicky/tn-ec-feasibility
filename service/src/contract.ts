@@ -61,7 +61,7 @@ export type FailureCode =
   | "captcha_unrecoverable" | "timeout";
 
 export interface DeliverableDoc {
-  kind: "ec_pdf" | "raw_html" | "screenshot";
+  kind: "ec_summary" | "ec_pdf" | "raw_html" | "screenshot";
   url: string;
   expiresAt: string;
   sha256: string;

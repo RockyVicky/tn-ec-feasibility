@@ -2,10 +2,12 @@ import type { RequestStore } from "./store/types.ts";
 import type { ProviderRouter } from "./providers/router.ts";
 import type { WebhookDeliverer } from "./webhook/deliver.ts";
 import type { HitlStore } from "./hitl/types.ts";
+import type { ObjectStore } from "./storage/types.ts";
 import { ProviderError } from "./providers/types.ts";
 import { MasterDataError, resolveUnit } from "./masterdata/index.ts";
+import { renderEcHtml } from "./render/ec-doc.ts";
 import type { Config } from "./config.ts";
-import type { FailureCode, RequestStatus, WebhookEventName } from "./contract.ts";
+import type { DeliverableDoc, FailureCode, RequestStatus, WebhookEventName } from "./contract.ts";
 
 type Logger = (event: string, data?: Record<string, unknown>) => void;
 
@@ -18,10 +20,24 @@ export function createPipeline(deps: {
   router: ProviderRouter;
   webhooks: WebhookDeliverer;
   hitl: HitlStore;
+  storage: ObjectStore;
   config: Config;
   log: Logger;
 }): Pipeline {
-  const { store, router, webhooks, hitl, config, log } = deps;
+  const { store, router, webhooks, hitl, storage, config, log } = deps;
+
+  /** Render the result to an HTML summary, store it, return deliverable doc refs. */
+  async function makeDocuments(requestId: string, result: NonNullable<RequestStatus["result"]>): Promise<DeliverableDoc[]> {
+    try {
+      const html = Buffer.from(renderEcHtml(result), "utf8");
+      const obj = await storage.put(`ec/${requestId}`, "text/html", html);
+      const signed = storage.signedPath(obj.key, 60 * 60_000);
+      return [{ kind: "ec_summary", url: signed.path, expiresAt: signed.expiresAt, sha256: obj.sha256 }];
+    } catch (err) {
+      log("pipeline.document_store_failed", { requestId, error: (err as Error).message });
+      return [];
+    }
+  }
 
   async function emit(event: WebhookEventName, status: RequestStatus, callbackUrl: string): Promise<void> {
     void webhooks.send(event, status, callbackUrl);
@@ -65,9 +81,10 @@ export function createPipeline(deps: {
         const since = new Date(Date.now() - config.dedupeWindowDays * 86_400_000);
         const hit = await store.findRecentByParamHash(rec.paramHash, since);
         if (hit?.status.result) {
+          const documents = await makeDocuments(requestId, hit.status.result);
           const rec2 = await store.update(
             requestId,
-            { status: "completed", completedAt: new Date().toISOString(), source: hit.status.source, result: hit.status.result, documents: hit.status.documents },
+            { status: "completed", completedAt: new Date().toISOString(), source: hit.status.source, result: hit.status.result, documents },
             "dedupe_hit",
             { servedFrom: hit.status.requestId },
           );
@@ -123,12 +140,13 @@ export function createPipeline(deps: {
         result.outcome === "PERIOD_GAP" ||
         result.caveats.some((c) => c.code === "OCR_LOW_CONFIDENCE" || c.code === "PARTIAL_PERIOD_DIGITISED");
 
+      const documents = await makeDocuments(requestId, result);
       const status: RequestStatus["status"] = partial ? "partial" : "completed";
       const rec2 = await store.update(
         requestId,
-        { status, completedAt: new Date().toISOString(), source: provider, result, documents: [] },
+        { status, completedAt: new Date().toISOString(), source: provider, result, documents },
         status,
-        { provider, outcome: result.outcome },
+        { provider, outcome: result.outcome, documents: documents.length },
       );
       await emit(partial ? "ec.partial" : "ec.completed", rec2.status, req.callbackUrl);
     },

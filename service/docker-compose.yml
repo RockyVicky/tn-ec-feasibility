@@ -1,20 +1,21 @@
-# Local stack in the Phase-1 shape (Postgres + Redis). The service still defaults to
-# BACKEND=memory until store/postgres.ts and the BullMQ queue are implemented; this
-# file exists so the infra is one command away when that work starts.
+# Local stack for the Postgres backend. The service also runs fully in-memory
+# (BACKEND=memory, the default) with no infra — this is for exercising the
+# Postgres store + durable queue against a real server.
 services:
   ec-service:
     build: .
     ports: ["8080:8080"]
     environment:
       PORT: "8080"
-      BACKEND: "memory" # switch to "postgres+redis" once implemented
+      BACKEND: "postgres"
       DATABASE_URL: "postgres://ec:ec@db:5432/ec"
-      REDIS_URL: "redis://redis:6379"
+      STORAGE: "local:/data/objects"
       WEBHOOK_SIGNING_SECRET: "dev-secret-change-me"
       TENANT_KEYS: '{"erp-staging":"dev-tenant-key"}'
       HITL_MODE: "console"
       PROVIDER_ORDER: "aggregator:landeed,aggregator:surepass,automation,mock"
-    depends_on: [db, redis]
+    volumes: ["ecobjects:/data/objects"]
+    depends_on: [db]
 
   db:
     image: postgres:16-alpine
@@ -25,9 +26,6 @@ services:
     ports: ["5432:5432"]
     volumes: ["ecdata:/var/lib/postgresql/data"]
 
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
-
 volumes:
   ecdata:
+  ecobjects:
