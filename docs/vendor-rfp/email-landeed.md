@@ -1,7 +1,11 @@
 # Draft email — Landeed
 
 **Send from:** Raakesh R <raakeshofficial7777@gmail.com>
-**To:** ravi@landeed.com  (or via https://www.landeed.com/contact)
+**To:** customers@landeed.com  (verified — appears on landeed.com/contact and the API product page)
+**Best route for API specifically:** the "Book a demo" / contact form at
+https://www.landeed.com/contact, and their API page https://www.landeed.com/document-procurement-api
+**Fallback only:** ravi@landeed.com — seen in third-party writeups (likely the founder),
+NOT confirmed on any official Landeed page. Use only if customers@ + the form get no reply.
 **Attach:** rfp-lite.md (optional), sample-properties list
 **Fill before sending:** phone (optional), the [ ] placeholders, a response-by date.
 **Claude drafts only — Raakesh sends this.**
@@ -34,7 +38,8 @@ A few questions:
   to start.
 
 I've kept this short on purpose — happy to share more about the project or take a
-quick call. Could you point me to the right docs and a way to get a test key?
+quick call. Could you point me to the Document Procurement API docs and a way to
+get a test/dev-sales key?
 
 Thanks,
 Raakesh R

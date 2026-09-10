@@ -1,7 +1,8 @@
 # Draft email — SurePass
 
 **Send from:** Raakesh R <raakeshofficial7777@gmail.com>
-**To:** contact@surepass.io  (also try the self-serve sandbox at https://surepass.io/get-api-key/)
+**To:** contact@surepass.io  (verified — appears repeatedly on surepass.io/contact-us; phone +91 9990690960)
+**Also:** self-serve sandbox signup at https://surepass.io/get-api-key/
 **Attach:** rfp-lite.md (optional), sample-properties list
 **Fill before sending:** phone (optional), the [ ] placeholders, a response-by date.
 **Claude drafts only — Raakesh sends this.**
