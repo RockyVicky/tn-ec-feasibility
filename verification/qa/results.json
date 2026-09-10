@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-10T20:15:49.168Z",
+  "at": "2026-09-10T20:24:53.095Z",
   "total": 31,
   "pass": 31,
   "fail": 0,
@@ -10,7 +10,7 @@
       "category": "functional",
       "desc": "EC_WISE survey 123/4 -> completed, ENTRIES_FOUND, mortgage entry, disclaimer",
       "status": "PASS",
-      "ms": 38
+      "ms": 36
     },
     {
       "id": "TC2",
@@ -31,7 +31,7 @@
       "category": "functional",
       "desc": "unknown SRO -> failed / unresolvable with helpful message",
       "status": "PASS",
-      "ms": 8
+      "ms": 6
     },
     {
       "id": "TC4",
@@ -45,35 +45,35 @@
       "category": "functional",
       "desc": "identical informational request within window served from cache",
       "status": "PASS",
-      "ms": 71
+      "ms": 19
     },
     {
       "id": "TC5b",
       "category": "functional",
       "desc": "certified EC: payment -> awaiting_signature -> signed",
       "status": "PASS",
-      "ms": 864
+      "ms": 867
     },
     {
       "id": "RL1",
       "category": "robustness",
       "desc": "per-tenant rate limit returns 429 with Retry-After",
       "status": "PASS",
-      "ms": 1101
+      "ms": 1098
     },
     {
       "id": "N1",
       "category": "negative",
       "desc": "no auth header -> 401",
       "status": "PASS",
-      "ms": 1
+      "ms": 2
     },
     {
       "id": "N2",
       "category": "negative",
       "desc": "wrong bearer token -> 401",
       "status": "PASS",
-      "ms": 1
+      "ms": 3
     },
     {
       "id": "N3",
@@ -87,35 +87,35 @@
       "category": "negative",
       "desc": "malformed JSON -> 400, not 500",
       "status": "PASS",
-      "ms": 5
+      "ms": 8
     },
     {
       "id": "N5",
       "category": "negative",
       "desc": "missing required field (period) -> 400",
       "status": "PASS",
-      "ms": 5
+      "ms": 4
     },
     {
       "id": "N6",
       "category": "negative",
       "desc": "period.from after period.to -> 400",
       "status": "PASS",
-      "ms": 6
+      "ms": 7
     },
     {
       "id": "N7",
       "category": "negative",
       "desc": "DOCUMENT_WISE without documentNumber -> 400",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "N8",
       "category": "negative",
       "desc": "invalid date format -> 400",
       "status": "PASS",
-      "ms": 1
+      "ms": 3
     },
     {
       "id": "N9",
@@ -129,7 +129,7 @@
       "category": "negative",
       "desc": "empty body -> 400",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "N11",
@@ -143,42 +143,42 @@
       "category": "negative",
       "desc": "same Idempotency-Key + different body -> 409",
       "status": "PASS",
-      "ms": 4
+      "ms": 7
     },
     {
       "id": "N13",
       "category": "negative",
       "desc": "same Idempotency-Key + same body -> 200 replay, same id",
       "status": "PASS",
-      "ms": 3
+      "ms": 5
     },
     {
       "id": "S1",
       "category": "security",
       "desc": "injection-ish string in surveyNumber is handled, no 500",
       "status": "PASS",
-      "ms": 4
+      "ms": 5
     },
     {
       "id": "S2",
       "category": "security",
       "desc": "oversized field (20KB) does not crash the service",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "S3",
       "category": "security",
       "desc": "reference length cap enforced (>120 chars -> 400)",
       "status": "PASS",
-      "ms": 1
+      "ms": 2
     },
     {
       "id": "S4",
       "category": "security",
       "desc": "FINDING CHECK: GET request by id has no per-tenant ownership check",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "B1",
@@ -192,7 +192,7 @@
       "category": "boundary",
       "desc": "pre-1975 period -> PERIOD_GAP, encumbrancePresent null",
       "status": "PASS",
-      "ms": 4
+      "ms": 6
     },
     {
       "id": "B4",
@@ -213,12 +213,12 @@
       "category": "webhook",
       "desc": "ec.received + ec.completed delivered with a VALID signature",
       "status": "PASS",
-      "ms": 415
+      "ms": 414
     },
     {
       "id": "P1-metrics",
       "category": "performance",
-      "desc": "p50=57ms p95=63ms (mock provider, in-memory)",
+      "desc": "p50=4ms p95=68ms (mock provider, in-memory)",
       "status": "INFO"
     },
     {
@@ -226,7 +226,7 @@
       "category": "performance",
       "desc": "20 sequential requests all complete; report p50/p95",
       "status": "PASS",
-      "ms": 743
+      "ms": 137
     }
   ]
 }

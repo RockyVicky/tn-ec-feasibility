@@ -42,12 +42,18 @@ paths:
         '400': { $ref: '#/components/responses/Error' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
+        '429':
+          description: Per-tenant rate limit exceeded
+          headers:
+            Retry-After: { schema: { type: integer }, description: seconds until the window resets }
+          content:
+            application/json:
+              schema: { type: object, properties: { error: { type: string } } }
 
   /ec-requests/{requestId}:
     get:
       operationId: getEcRequest
-      summary: Poll status / result
+      summary: Poll status / result (fallback for missed webhooks)
       parameters:
         - in: path
           name: requestId
@@ -60,6 +66,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RequestStatus' }
         '404': { $ref: '#/components/responses/Error' }
+
+  /documents/{key}:
+    get:
+      operationId: getDocument
+      summary: Download an EC document via a signed, time-limited URL
+      description: >
+        The URL (with `exp` and `token` query params) comes from `documents[].url`
+        in a completed request. No bearer token needed; the signature authorises it.
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema: { type: string }
+        - in: query
+          name: exp
+          required: true
+          schema: { type: string }
+        - in: query
+          name: token
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: the document bytes (text/html or application/pdf) }
+        '403': { description: bad or expired token }
+        '404': { description: not found }
+
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Prometheus-style metrics (text)
+      security: []
+      responses:
+        '200': { description: metrics in text exposition format }
 
 components:
   securitySchemes:
@@ -121,7 +160,7 @@ components:
         reference: { type: string }
         status:
           type: string
-          enum: [queued, in_progress, needs_human, completed, partial, failed]
+          enum: [queued, in_progress, needs_human, awaiting_signature, completed, partial, failed]
         certified: { type: boolean }
         source: { type: string }
         submittedAt: { type: string, format: date-time }
@@ -139,7 +178,7 @@ components:
           items:
             type: object
             properties:
-              kind: { type: string, enum: [ec_pdf, raw_html, screenshot] }
+              kind: { type: string, enum: [ec_summary, ec_pdf, raw_html, screenshot] }
               url: { type: string, format: uri }
               expiresAt: { type: string, format: date-time }
               sha256: { type: string }
@@ -162,7 +201,7 @@ components:
         eventId: { type: string }
         event:
           type: string
-          enum: [ec.received, ec.needs_human, ec.completed, ec.partial, ec.failed]
+          enum: [ec.received, ec.needs_human, ec.awaiting_signature, ec.completed, ec.partial, ec.failed]
         requestId: { type: string }
         reference: { type: string }
         occurredAt: { type: string, format: date-time }

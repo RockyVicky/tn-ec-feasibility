@@ -54,13 +54,19 @@ Log outcomes in [`docs/decision-log.md`](docs/decision-log.md).
 
 ## 5. Phases
 
-| Phase | Scope | Exit criteria |
+All phases **built and tested against mocks**. What stays blocked: the real
+Landeed/SurePass API responses (need a sandbox key) and the automation worker
+against the *real* TNREGINET host (needs an India runner + a real account).
+
+| Phase | Scope | Status |
 |---|---|---|
-| **0 — Initiation** ✅ mostly done | Charter, internal API contract, canonical model, RFP drafts, **working+tested service skeleton**, operator console, dashboard, architecture/runbook/test docs | ✅ `docs/` + `service/` complete & verified · ⏭️ RFPs still to send · ⏭️ decisions D1–D8 to collect |
-| **1 — EC Service MVP** (~3 wks after go) | API layer + request store + queue + Landeed adapter + canonical model + webhook/polling; ERP integration in staging | ERP submits a request in staging, gets a parsed result + PDF via aggregator sandbox |
-| **2 — 2nd provider + caching + dashboards** (~2 wks) | SurePass adapter, provider router + circuit breaker, dedupe cache, observability | Automatic failover demonstrated; cost/turnaround metrics live |
-| **3 — Supervised browser fallback** (~3 wks) | Playwright worker on India infra, account pool + keep-alive, HITL console, EC parser + OCR | End-to-end EC via automation with one human CAPTCHA touch; selectors stable 2 wks |
-| **4 — Harden** (~2 wks) | Load test, maintenance/block handling, alerting, retention/audit, DR, runbook | Meets agreed SLA at expected volume; on-call runbook signed off |
+| **0 — Initiation** | Charter, API contract + OpenAPI, canonical model, RFP pack, service skeleton, operator console, dashboard, demo client | ✅ done |
+| **1 — EC Service** | Async API, validation, provider router (failover + circuit breaker), canonical model, webhooks + polling, dedupe | ✅ done (mock provider; real Landeed/SurePass adapters are mapping-stubs pending sandbox) |
+| **2 — Production infra** | Postgres store + audit trail, durable job queue, object storage + signed document URLs, `/metrics`, per-tenant rate limiting, **full 595-SRO master data**, load-test harness | ✅ done |
+| **3 — Browser automation** | Playwright worker (login/CAPTCHA/form/OTP/scrape) proven E2E against a mock TNREGINET portal; OCR (tesseract.js) for scanned pre-1987 ECs; HITL console | ✅ done (mock portal). ⏭️ real portal: needs India infra + `poc/SELECTORS.md` lock-down |
+| **4 — Certified EC + ERP** | Certified async state machine (payment → `awaiting_signature` → signed), mock payment step, mock ERP receiver + full webhook/signature/document contract tests | ✅ done (mock payment; real gateway pending) |
+
+Test totals: **50 unit/integration + 31 API + 16 UI + 15 automation-E2E + 13 ERP-contract + 5 OCR + load** — all green. See `verification/QA-REPORT.md`.
 
 ## 6. Immediate next actions
 
@@ -71,8 +77,8 @@ Log outcomes in [`docs/decision-log.md`](docs/decision-log.md).
 | 3 | Request legal review of aggregator + direct-automation routes | Client legal | Go/no-go on Track B fallback | ⏭️ |
 | 4 | Agree internal API contract with ERP team | Raakesh + ERP team | Signed-off `docs/openapi.yaml` | ✅ drafted; ⏭️ ERP review |
 | 5 | Aggregator sandbox spike (pull 1 EC → canonical model) | Raakesh | Working proof, gap list | ⏭️ after #2 — adapter stub in `service/src/providers/landeed.ts` |
-| 6 | From-India automation spike (lock POC selectors) | Raakesh | Working fallback scaffold | ⏭️ if D4 allows — checklist in [`poc/SELECTORS.md`](poc/SELECTORS.md) |
-| 7 | EC Service skeleton | Raakesh | Runnable + tested | ✅ [`service/`](service/) — 31 tests, demo-verified |
+| 6 | From-India automation run (lock real portal selectors) | Raakesh | Real-portal fallback | ⏭️ if D4 allows — worker proven vs mock portal; checklist in [`poc/SELECTORS.md`](poc/SELECTORS.md) |
+| 7 | EC Service (Phases 1–4) | Raakesh | Runnable + tested | ✅ [`service/`](service/) — 130+ checks, all green |
 
 ## 7. Key risks
 

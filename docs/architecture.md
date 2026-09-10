@@ -15,19 +15,21 @@ Expands `REPORT.md` §8 with the sequence flows and how the Phase-0 skeleton in
                        Object storage (PDFs, screenshots, raw HTML)  ◄─┘
 ```
 
-| Production component | Phase-0 skeleton (`service/src/`) | Phase-1 swap |
+| Component | Built (`service/src/`) | Still to do for production |
 |---|---|---|
-| API layer | `app.ts` (Fastify) | + rate limiting, mTLS/JWT, request-size limits |
-| Request store | `store/memory.ts` | `store/postgres.ts` (schema already sketched) |
-| Queue | `queue/memory.ts` | BullMQ on Redis; N worker processes |
-| Provider router | `providers/router.ts` (order + circuit breaker) | config per district/age; metrics |
-| Aggregator adapters | `providers/landeed.ts`, `providers/surepass.ts` (stubs) | real endpoints after sandbox onboarding |
-| Automation worker | `providers/automation.ts` (HITL handshake only) | Playwright pool on India infra (see `poc/`) |
-| HITL | `hitl/*` + `public/console.html` | SSO, operator roles, SLA metrics, audio/image CAPTCHA render |
-| Webhooks | `webhook/*` (HMAC + retry) | persistent outbox, dead-letter, replay endpoint |
-| Object storage | (none — `documents: []`) | S3-compatible, encrypted, access-logged |
-| EC parser | `parse/ec-html.ts` (regex) | DOM parser + OCR service for scanned ECs |
-| Master data | `masterdata/*` (partial seed) | full SRO list + refresh job |
+| API layer | `app.ts` — Fastify, tenant auth, **per-tenant rate limiting**, `/metrics` | mTLS/JWT, request-size limits |
+| Request store | ✅ `store/memory.ts` + **`store/postgres.ts`** (audit trail) | managed Postgres, migrations tool |
+| Queue | ✅ `queue/memory.ts` + **`queue/postgres.ts`** (durable, leased, crash-safe) | N worker processes; dashboard |
+| Provider router | ✅ `providers/router.ts` (order + circuit breaker) | config per district/age |
+| Aggregator adapters | `providers/landeed.ts`, `surepass.ts` — request/response mapping stubs | real endpoints after sandbox onboarding |
+| Automation worker | ✅ **`providers/automation-worker.ts`** — full Playwright flow, proven vs `verification/mock-portal/` | run against the real portal from India (`poc/SELECTORS.md`); account pool + keep-alive |
+| OCR | ✅ **`parse/ocr.ts`** (tesseract.js) for scanned ECs | tune models; scanned-fixture regression set |
+| HITL | ✅ `hitl/*` (captcha/otp/nil_review/ocr_review/**payment**) + `public/console.html` | SSO, operator roles, SLA metrics |
+| Webhooks | ✅ `webhook/*` (HMAC + retry) | persistent outbox, dead-letter, replay endpoint |
+| Object storage | ✅ **`storage/*`** (memory + local-fs, signed URLs) + `render/ec-doc.ts` | S3-compatible, encrypted, lifecycle rules |
+| EC parser | ✅ `parse/ec-html.ts` | swap regex for a DOM parser once real HTML is captured |
+| Master data | ✅ **all 595 SROs** (`masterdata/tn-sros.json`) | district level + village jurisdiction from TNREGINET |
+| Certified flow | ✅ `pipeline.ts` async state machine + mock payment | real payment gateway; poll portal/vendor for the signed copy |
 
 ## 2. Request lifecycle — informational EC via aggregator
 

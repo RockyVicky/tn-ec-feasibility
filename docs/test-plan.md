@@ -1,45 +1,38 @@
 # Test plan
 
-## Automated (`service/`)
+Full results: [`../verification/QA-REPORT.md`](../verification/QA-REPORT.md).
+Latest: **50 vitest + 31 API + 16 UI + 15 automation-E2E + 13 ERP-contract + 5 OCR + load = 130+, all green.**
 
-`npm test` — 31 tests, Vitest. Run in CI on every push.
+## Unit + integration — `cd service && npm test` (Vitest, 50)
 
 | Suite | Covers |
 |---|---|
-| `validation.test.ts` | request schema, auth, idempotency-key presence, period order, DOCUMENT_WISE required fields, happy-path 202 |
-| `idempotency.test.ts` | same key+body → same id (200); same key+different body → 409 |
-| `masterdata.test.ts` | zone/district/SRO resolution by code and name; unknown-level errors; coverage stat |
-| `parse.test.ts` | EC HTML → canonical entries (with/without entries); instrument classification; `deriveOutcome` for nil/verified-nil/period-gap |
-| `router.test.ts` | first-supporting-provider; failover on retryable error; stop on non-retryable; circuit breaker; no-provider case |
-| `webhook.test.ts` | HMAC sign/verify; tamper rejection; stop-after-2xx; retry-to-budget on 5xx |
-| `lifecycle.test.ts` | end-to-end via HTTP inject: ENTRIES_FOUND, NIL_UNCONFIRMED (partial), needs_human path, unresolvable SRO, PERIOD_GAP, dedupe cache hit |
+| `validation.test.ts` | request schema, auth, idempotency-key, period order + **real calendar date**, DOCUMENT_WISE fields, 202 |
+| `idempotency.test.ts` | same key+body → 200 same id; different body → 409 |
+| `masterdata.test.ts` | SRO resolution (name/alias/wrong-zone hint); unknown SRO; 595-SRO coverage |
+| `parse.test.ts` | EC HTML → canonical entries; instrument classification; `deriveOutcome` |
+| `router.test.ts` | first-supporting provider; failover; stop on non-retryable; circuit breaker |
+| `webhook.test.ts` | HMAC sign/verify; tamper; stop-after-2xx; retry budget |
+| `storage.test.ts` | object store put/get; signed URL verify (good/expired/tampered); document flows through the pipeline and downloads |
+| `backend-postgres.test.ts` | PostgresRequestStore CRUD + audit + dedupe; PostgresQueue run/retry/re-lease/delay |
+| `backend-e2e.test.ts` | full lifecycle on `BACKEND=postgres`; DB rows verified |
+| `lifecycle.test.ts` | ENTRIES_FOUND, NIL_UNCONFIRMED, needs_human, unresolvable, PERIOD_GAP, **certified async flow**, dedupe |
 
-**Not yet automated (needs external access):**
-- real Landeed / SurePass adapter responses (needs sandbox)
-- live TNREGINET automation flow (needs India IP + worker infra)
-- Postgres store implementation
-- load / concurrency behaviour
+## Black-box + browser — `verification/qa/` (each spawns its own services)
 
-## Black-box + UI (`verification/qa/`)
+| Script | What | Count |
+|---|---|---|
+| `run-e2e.mjs` | API: TC1–TC5, TC5b (certified), RL1 (rate limit), negative/security/boundary/webhook/perf | 31 |
+| `ui-tests.mjs` | Playwright: dashboard structure (8 cards), dark/light, mobile no-overflow, live console CAPTCHA click-through | 16 |
+| `automation-e2e.mjs` | Playwright worker vs `verification/mock-portal/`: login+CAPTCHA, form, OTP, scrape, nil, scanned/OCR | 15 |
+| `erp-contract.mjs` | vs `verification/mock-erp/`: event order, HMAC signatures, signed-doc download + tamper, polling agreement, partial/failed | 13 |
+| `ocr-test.mjs` | render snippet → PNG → tesseract.js → text + rough entries | 5 |
+| `load-test.mjs` | 25-concurrent sustained submit + local webhook sink; queue drains; latency; 0 errors | pass |
+| `record-walkthrough.mjs` | records the manual-test walkthrough video (webm + gif) | — |
 
-- `run-e2e.mjs` — 30 API checks against hermetically-spawned service instances:
-  the 5 manual cases (TC1–TC5) plus negative, security, boundary, webhook-signature
-  and performance-smoke checks. Independent HMAC verification via `webhook-sink.mjs`.
-- `ui-tests.mjs` — 16 Playwright + Chromium checks: dashboard structure, dark/light
-  mode contrast, mobile no-overflow, and a real click-through of the operator
-  console clearing a CAPTCHA task.
+## Still needs external access
 
-Latest run: 33 + 30 + 16 = **79 pass, 0 fail**. Full report: `verification/QA-REPORT.md`.
-
-## Manual
-
-See `manual-test-cases.md` (tester-friendly) — the same cases are rendered as
-step-cards on the project dashboard (`service/public/dashboard.html`).
-
-## Phase-1 additions
-
-- Contract tests against the ERP's real callback endpoint
-- Aggregator adapter contract tests recorded from sandbox (nock/polly-style fixtures)
-- Playwright smoke of the automation flow from an India runner (nightly)
-- Load test: sustained N req/min, verify concurrency caps + breaker behaviour
-- Chaos: provider 500s, portal timeouts, webhook endpoint down → correct failure codes + recovery
+- Real Landeed / SurePass API responses — vendor sandbox key.
+- The automation worker against the **real** geo-blocked portal — India runner + account.
+- Managed Postgres under production load; real payment gateway.
+- Chaos: real provider 500s / portal timeouts / ERP endpoint down over a long soak.

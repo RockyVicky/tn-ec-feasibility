@@ -73,9 +73,9 @@ async function run() {
       assert(h2.includes(s), `missing section: ${s}`);
     }
   });
-  await check("D3", "5 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge", async () => {
+  await check("D3", "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge", async () => {
     const cards = await dpage.$$(".card");
-    eq(cards.length, 5, "card count");
+    eq(cards.length, 8, "card count");
     for (let i = 0; i < cards.length; i++) {
       const steps = await cards[i].$$eval("ol.steps li", (l) => l.length);
       assert(steps >= 2, `card ${i + 1} has numbered steps`);

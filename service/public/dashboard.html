@@ -55,14 +55,15 @@
   <p class="lede">Making the client's ERP able to pull Tamil Nadu Encumbrance Certificate (EC) data automatically, instead of staff keying details into the TNREGINET government portal by hand.</p>
 
   <div class="grid">
-    <div class="stat"><div class="k">Phase</div><div class="v">0 – Initiation</div></div>
-    <div class="stat"><div class="k">Feasibility</div><div class="v">Done ✅</div></div>
+    <div class="stat"><div class="k">Build</div><div class="v">Phases 1–4 done</div></div>
+    <div class="stat"><div class="k">Tests</div><div class="v">130+ passing ✅</div></div>
     <div class="stat"><div class="k">Approach</div><div class="v">Hybrid, aggregator-first</div></div>
-    <div class="stat"><div class="k">Blocked on</div><div class="v">8 client decisions</div></div>
+    <div class="stat"><div class="k">Blocked on</div><div class="v">vendor key + India runner</div></div>
   </div>
 
   <h2>Where things stand</h2>
   <p>We checked every official route. <b>There is no government API</b> for EC search — not from TNREGINET, not from API&nbsp;Setu. The workable path is a licensed data provider (Landeed / SurePass) as the main source, with our own supervised browser automation as a backup, both hidden behind one simple interface the ERP calls. Certified (court/bank-grade) ECs will always take 1–10 days because a government officer has to sign them.</p>
+  <p><b>The whole pipeline is built and tested</b> — database, queue, the full 595-office list, the automation robot (proven against a stand-in portal), OCR for old scanned certificates, the certified-copy flow, and the ERP hand-off. It currently runs on <i>sample data</i>. Two things unlock real data: a sandbox key from a vendor, or running the robot from a server in India.</p>
   <p class="note">Full write-up: <code>REPORT.md</code>. Plan and decisions: <code>PROJECT.md</code>.</p>
 
   <h2>What's built so far</h2>
@@ -71,15 +72,18 @@
     <li>Project charter, phased plan, decision log</li>
     <li>The interface the ERP will call — spec + machine-readable OpenAPI</li>
     <li>One standard "EC result" format that every data source maps into</li>
-    <li>Working service skeleton: request intake, validation, queue, provider routing with automatic failover, webhook delivery, de-duplication</li>
-    <li>Operator console for the human steps (CAPTCHA / OTP / checking "no records" results)</li>
-    <li>Manual test client (<code>/demo</code>) — drive the service from a browser, no curl needed</li>
-    <li>EC results-table parser (turns the portal's table into structured data)</li>
-    <li>Test suites — 79 checks (unit, API black-box, browser UI), all passing</li>
-    <li>Vendor RFP + outreach email drafts for Landeed and SurePass</li>
-    <li class="todo">Real Landeed / SurePass integration — needs sandbox access</li>
-    <li class="todo">Browser-automation worker running from India — needs infra + the portal unblocked</li>
-    <li class="todo">Database + Redis queue for production scale</li>
+    <li>Async service: request intake, validation, provider routing with automatic failover, webhook delivery + polling, de-duplication</li>
+    <li>Production infra: Postgres store with a full audit trail, a durable crash-safe job queue, file storage with signed download links, metrics, per-customer rate limits</li>
+    <li>Complete Tamil Nadu office list — all 595 Sub-Registrar offices across 11 zones</li>
+    <li>Browser-automation worker — proven end to end (login, CAPTCHA, form, OTP, scrape) against a stand-in copy of the TNREGINET portal</li>
+    <li>Reads old scanned certificates with OCR and flags every line for a person to check</li>
+    <li>Certified-copy flow: payment step → "waiting for the Sub-Registrar to sign" → signed PDF delivered (the real 1–10 day wait, handled asynchronously)</li>
+    <li>Operator console + manual test client (<code>/demo</code>) — drive it all from a browser</li>
+    <li>Test suites — 130+ checks (unit, API, browser, automation, ERP contract, OCR, load), all passing</li>
+    <li>Vendor RFP + outreach emails (sent)</li>
+    <li class="todo">Real Landeed / SurePass data — needs a sandbox key from them</li>
+    <li class="todo">Automation against the <i>real</i> portal — needs a server in India + a portal account</li>
+    <li class="todo">Real payment gateway for certified copies</li>
   </ul>
 
   <h2>Manual test cases</h2>
@@ -189,6 +193,67 @@ Param hash in src/util/hash.ts (ignores callbackUrl / reference). Window from co
     </details>
   </div>
 
+  <!-- TC6 -->
+  <div class="card">
+    <div class="tag">Task: Production infra — database &amp; queue</div>
+    <h3>TC6 · Nothing is lost if the service restarts mid-job</h3>
+    <p class="what">Checks that requests and their history survive a crash — they live in a real database, and half-finished jobs get picked up again.</p>
+    <ol class="steps">
+      <li>Start the service in database mode: set <code>BACKEND=postgres</code> and start it (<code>docker compose up</code> brings up the database too).</li>
+      <li>Send an EC request; note the <code>requestId</code>.</li>
+      <li>Ask for the status and check it completed.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      The request completes as normal. In the database, the <code>ec_requests</code> row and an <code>ec_request_audit</code> trail (received → in&nbsp;progress → completed) are there, and the job row shows <code>done</code>. If the service is killed while a job is running, another instance re-runs it — nothing is dropped.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/backend-postgres.test.ts (8) + test/backend-e2e.test.ts (3).
+PostgresRequestStore + PostgresQueue on PGlite; schema in src/db/schema.sql.
+Queue uses FOR UPDATE SKIP LOCKED + lease expiry for crash recovery.</pre>
+    </details>
+  </div>
+
+  <!-- TC7 -->
+  <div class="card">
+    <div class="tag">Task: Browser automation — the fallback route</div>
+    <h3>TC7 · The robot logs in, fills the form, clears CAPTCHA/OTP, and reads the result</h3>
+    <p class="what">Checks the automation worker end to end. The real TNREGINET portal is blocked outside India, so this runs against a stand-in copy that behaves the same way.</p>
+    <ol class="steps">
+      <li>Start the stand-in portal: <code>node verification/mock-portal/server.mjs</code>.</li>
+      <li>Run <code>node verification/qa/automation-e2e.mjs</code>.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      15 checks pass: the worker logs in (CAPTCHA goes to a person), fills the search form, clears the search CAPTCHA and an OTP, and scrapes 2 entries into the standard result format. A "no records" search and a scanned old certificate (read by OCR, every line flagged for review) also pass.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>src/providers/automation-worker.ts (Playwright) vs verification/mock-portal/.
+CAPTCHA/OTP never auto-solved — each opens a HITL task with a screenshot.
+Scanned images -> src/parse/ocr.ts (tesseract.js) + OCR_LOW_CONFIDENCE caveat.
+Real portal: needs an India runner + account; checklist in poc/SELECTORS.md.</pre>
+    </details>
+  </div>
+
+  <!-- TC8 -->
+  <div class="card">
+    <div class="tag">Task: Certified (signed) EC — the async flow</div>
+    <h3>TC8 · A certified copy: pay, wait for the Sub-Registrar to sign, get the PDF</h3>
+    <p class="what">Checks the certified-copy path. A real certified EC takes 1–10 days because a government officer must digitally sign it — the ERP sees this as a normal async job.</p>
+    <ol class="steps">
+      <li>Send an EC request with <code>certified: true</code>.</li>
+      <li>Watch the status.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      The estimate comes back "in days". The request goes: needs a person (payment) → <code>awaiting_signature</code> → <code>completed</code>, with a signed PDF document and a "digitally signed by the Sub-Registrar" note. The ERP gets a webhook at each step.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts → "certified EC async flow" and run-e2e.mjs TC5b.
+Pipeline is re-entrant: a delayed job re-runs run() which branches on the stored
+status. New status "awaiting_signature" + webhook "ec.awaiting_signature".
+CERTIFIED_SIGN_DELAY_MS simulates the SRO wait; real deployments poll the portal/vendor.
+Payment is a HITL "payment" task (mock auto-approves; operator approves in console mode).</pre>
+    </details>
+  </div>
+
   <h2>Decisions we need from the client</h2>
   <table>
     <tr><th>#</th><th>Decision</th><th>Why it matters</th></tr>
@@ -198,7 +263,7 @@ Param hash in src/util/hash.ts (ignores callbackUrl / reference). Window from co
     <tr><td>D4</td><td>Is our own browser automation allowed, or licensed-vendor only?</td><td>Whether we build the fallback</td></tr>
     <tr><td>D5</td><td>Who staffs the operator console + owns an Indian SIM/mailbox for OTPs</td><td>Fallback + certified flow</td></tr>
     <tr><td>D6</td><td>Data retention + India-only processing rules</td><td>Storage design, vendor DPA</td></tr>
-    <tr><td>D7</td><td>Tech stack sign-off (proposed: Node + TypeScript + Postgres + Redis)</td><td>Production build</td></tr>
+    <tr><td>D7</td><td>Tech stack sign-off (built on: Node + TypeScript + Postgres)</td><td>Production build</td></tr>
     <tr><td>D8</td><td>Any existing relationship with the TN Registration Dept</td><td>Could unlock a real API</td></tr>
   </table>
 

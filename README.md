@@ -3,8 +3,12 @@
 Give a client ERP a reliable way to retrieve Tamil Nadu EC data programmatically
 instead of staff keying details into the TNREGINET portal and handling PDFs by hand.
 
-**Status:** Phase 0 (initiation) complete. Feasibility done; service skeleton built,
-tested (31 tests), and demo-verified. Blocked on 8 client decisions before Phase 1.
+**Status:** Feasibility done. Service built through Phase 4 — async API, Postgres +
+durable queue, 595-SRO master data, provider router, browser-automation worker
+(proven against a mock TNREGINET portal) + OCR, certified-EC async flow, ERP
+webhook contract. **130+ automated checks, all green.** What's blocked: the real
+Landeed/SurePass API (needs a sandbox key) and the automation worker against the
+*real* portal (needs an India runner). See [`verification/QA-REPORT.md`](verification/QA-REPORT.md).
 
 ## Start here
 
@@ -28,10 +32,10 @@ tested (31 tests), and demo-verified. Blocked on 8 client decisions before Phase
 | [`docs/test-plan.md`](docs/test-plan.md) · [`docs/manual-test-cases.md`](docs/manual-test-cases.md) | Test coverage + tester-friendly cases |
 | [`docs/client-scope-sheet.md`](docs/client-scope-sheet.md) | D1–D8 questionnaire to send the client |
 | [`docs/vendor-rfp/`](docs/vendor-rfp/) | RFP + cover email for Landeed / SurePass (drafts) |
-| [`verification/QA-REPORT.md`](verification/QA-REPORT.md) | Full QA pass — 79 checks (unit + API black-box + Playwright UI), 1 defect found & fixed |
-| [`verification/qa/`](verification/qa/) | The runnable QA suites + screenshots |
-| [`verification/AI-VERIFICATION.md`](verification/AI-VERIFICATION.md) | First-pass verification record |
-| [`poc/`](poc/) · [`poc/SELECTORS.md`](poc/SELECTORS.md) | Playwright scaffold for the TNREGINET flow + selector lock-down checklist |
+| [`verification/QA-REPORT.md`](verification/QA-REPORT.md) | **Full QA record — 130+ checks across 7 suites, all green**; 1 defect found & fixed |
+| [`verification/qa/`](verification/qa/) | The runnable QA suites (e2e, UI, automation-e2e, ERP-contract, OCR, load) + the walkthrough video |
+| [`verification/mock-portal/`](verification/mock-portal/) · [`verification/mock-erp/`](verification/mock-erp/) | Stand-in TNREGINET portal + ERP receiver used by the automation & contract tests |
+| [`poc/`](poc/) · [`poc/SELECTORS.md`](poc/SELECTORS.md) | TNREGINET Playwright scaffold + real-portal selector lock-down checklist |
 | [`research/`](research/) | Research log + sources |
 
 ## Approach (one line)

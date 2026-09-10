@@ -108,7 +108,8 @@
           "code": {
             "enum": ["ONLINE_DATA_FROM_1975", "PARTIAL_PERIOD_DIGITISED", "OCR_LOW_CONFIDENCE",
                      "TRANSLITERATION_AMBIGUITY", "VILLAGE_NAME_FUZZY_MATCH",
-                     "MULTIPLE_SUBDIVISIONS_PRESENT", "NIL_NOT_HUMAN_VERIFIED"]
+                     "MULTIPLE_SUBDIVISIONS_PRESENT", "NIL_NOT_HUMAN_VERIFIED",
+                     "CERTIFIED_PENDING_SIGNATURE", "CERTIFIED_COPY_SIGNED"]
           },
           "message": { "type": "string" }
         }

@@ -6,10 +6,11 @@ in this environment. **Pending human sign-off** (a person's own click-through).
 
 **Date:** 10 September 2026 · **Env:** Windows 11, Node 22.13, service on localhost.
 
-> A fuller QA pass (79 checks across unit, API black-box, and Playwright browser
-> tests, plus exploratory/negative/security testing) is in
-> [`QA-REPORT.md`](QA-REPORT.md). It found and fixed one defect (impossible
-> calendar dates accepted). The notes below are the original first-pass record.
+> **This is the Phase-0 first-pass record.** The project has since been built
+> through Phase 4 (Postgres + durable queue, 595-SRO master data, browser
+> automation vs a mock portal, OCR, certified async flow, ERP contract). The
+> current record — **130+ checks across 7 suites** — is in
+> [`QA-REPORT.md`](QA-REPORT.md).
 
 ## 1. Automated suite
 
