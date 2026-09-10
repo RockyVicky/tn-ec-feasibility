@@ -4,6 +4,26 @@ Lightweight ADRs. Newest first. Status: PROPOSED / ACCEPTED / SUPERSEDED.
 
 ---
 
+## ADR-0005 — Provider router with ordered failover + circuit breaker
+**Status:** ACCEPTED (2026-09-10) · **By:** Raakesh
+
+Providers are tried in `PROVIDER_ORDER`; first `supports()` && breaker-closed wins.
+Retryable `ProviderError` → fall through to next provider; non-retryable → stop.
+3 failures opens a provider's breaker for 60s. Lets us run aggregator-primary with
+automation-fallback and survive a vendor outage without code changes.
+
+---
+
+## ADR-0004 — Tech stack: Node 22 + TypeScript + Fastify; Postgres + Redis (Phase 1)
+**Status:** ACCEPTED pending client D7 (2026-09-10) · **By:** Raakesh
+
+Matches the client's existing Node/React estate and team skills. Fastify for a
+small, fast API surface; zod for request validation; BullMQ/Redis for the queue;
+Postgres for the request store + audit trail. Phase-0 runs fully in-memory so it
+needs no infra to demo. Revisit if the client's platform team mandates otherwise.
+
+---
+
 ## ADR-0003 — Async-only internal API (no synchronous EC endpoint)
 **Status:** ACCEPTED (2026-09-10) · **By:** Raakesh
 
@@ -40,7 +60,7 @@ ambiguity the system detects; the service never emits a legal verdict.
 
 | Ref | Decision | Waiting on |
 |---|---|---|
-| D7 | EC Service stack — proposed Node + TypeScript + Fastify + BullMQ/Redis + Postgres | Raakesh to confirm; align with client platform |
+| D7 | Stack confirmed by client (ADR-0004 is provisional) | Client platform team |
 | D4 | Whether the browser-automation fallback is built at all | Client + legal (risk appetite) |
 | D5 | Ops ownership of the HITL console + Indian SIM/mailbox | Client |
 | — | Primary aggregator: Landeed vs SurePass | RFP responses |

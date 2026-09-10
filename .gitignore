@@ -1,7 +1,8 @@
 node_modules/
 poc/config.json
 poc/artifacts/
-src/dist/
+service/dist/
+service/.env
 *.log
 .env
 .env.*

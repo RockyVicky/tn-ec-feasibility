@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TN EC Integration — Project Dashboard</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f7f9; --card:#fff; --ink:#1a1a1a; --muted:#5c6470; --line:#e4e6ea;
+          --accent:#2557d6; --ok:#1a7f37; --okbg:#e8f5ec; --warn:#b7791f; --warnbg:#fdf3e3; --pend:#6b7280; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#15161a; --card:#1e1f24; --ink:#e9e9ec; --muted:#9aa0a6; --line:#32333a;
+          --accent:#7aa2ff; --ok:#4ac26b; --okbg:#16281c; --warn:#e0a83e; --warnbg:#2a2114; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:960px; margin:0 auto; padding:28px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:36px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h3 { font-size:15px; margin:0 0 8px; }
+  .lede { color:var(--muted); margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .k { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .stat .v { font-size:18px; font-weight:600; margin-top:2px; }
+  .badge { display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; letter-spacing:.03em; }
+  .b-ai { background:var(--warnbg); color:var(--warn); border:1px solid var(--warn); }
+  .b-ok { background:var(--okbg); color:var(--ok); border:1px solid var(--ok); }
+  .b-pend { background:transparent; color:var(--pend); border:1px solid var(--pend); }
+  ul.check { list-style:none; padding:0; margin:0; }
+  ul.check li { padding:6px 0 6px 26px; position:relative; border-bottom:1px solid var(--line); }
+  ul.check li:before { content:"✓"; position:absolute; left:0; color:var(--ok); font-weight:700; }
+  ul.check li.todo:before { content:"○"; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:14px 0; }
+  .card .tag { font-size:12px; color:var(--muted); }
+  .card .what { font-style:italic; color:var(--muted); margin:4px 0 12px; }
+  ol.steps { margin:0 0 14px; padding-left:22px; }
+  ol.steps li { margin:5px 0; }
+  .expect { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 14px; margin:10px 0; }
+  .expect b { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:3px; }
+  .result { display:flex; gap:10px; align-items:center; margin-top:12px; }
+  .result .box { border:2px solid var(--line); border-radius:8px; padding:8px 16px; font-weight:600; color:var(--muted); }
+  .result .box.pass { border-color:var(--ok); color:var(--ok); background:var(--okbg); }
+  details { margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
+  details summary { cursor:pointer; color:var(--accent); font-size:13px; }
+  details pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; overflow-x:auto; font-size:12px; }
+  code { background:var(--bg); padding:1px 5px; border-radius:4px; font-size:.9em; }
+  a { color:var(--accent); }
+  .note { font-size:13px; color:var(--muted); }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tamil Nadu EC Integration — Project Dashboard</h1>
+  <p class="lede">Making the client's ERP able to pull Tamil Nadu Encumbrance Certificate (EC) data automatically, instead of staff keying details into the TNREGINET government portal by hand.</p>
+
+  <div class="grid">
+    <div class="stat"><div class="k">Phase</div><div class="v">0 – Initiation</div></div>
+    <div class="stat"><div class="k">Feasibility</div><div class="v">Done ✅</div></div>
+    <div class="stat"><div class="k">Approach</div><div class="v">Hybrid, aggregator-first</div></div>
+    <div class="stat"><div class="k">Blocked on</div><div class="v">8 client decisions</div></div>
+  </div>
+
+  <h2>Where things stand</h2>
+  <p>We checked every official route. <b>There is no government API</b> for EC search — not from TNREGINET, not from API&nbsp;Setu. The workable path is a licensed data provider (Landeed / SurePass) as the main source, with our own supervised browser automation as a backup, both hidden behind one simple interface the ERP calls. Certified (court/bank-grade) ECs will always take 1–10 days because a government officer has to sign them.</p>
+  <p class="note">Full write-up: <code>REPORT.md</code>. Plan and decisions: <code>PROJECT.md</code>.</p>
+
+  <h2>What's built so far</h2>
+  <ul class="check">
+    <li>Feasibility assessment — official APIs, API Setu, third-party providers, blockers, architecture</li>
+    <li>Project charter, phased plan, decision log</li>
+    <li>The interface the ERP will call — spec + machine-readable OpenAPI</li>
+    <li>One standard "EC result" format that every data source maps into</li>
+    <li>Working service skeleton: request intake, validation, queue, provider routing with automatic failover, webhook delivery, de-duplication</li>
+    <li>Operator console for the human steps (CAPTCHA / OTP / checking "no records" results)</li>
+    <li>EC results-table parser (turns the portal's table into structured data)</li>
+    <li>Automated test suite — 31 tests, all passing</li>
+    <li>Vendor RFP + outreach email drafts for Landeed and SurePass</li>
+    <li class="todo">Real Landeed / SurePass integration — needs sandbox access</li>
+    <li class="todo">Browser-automation worker running from India — needs infra + the portal unblocked</li>
+    <li class="todo">Database + Redis queue for production scale</li>
+  </ul>
+
+  <h2>Manual test cases</h2>
+  <p class="note">Each card is one thing a tester can check by hand. <span class="badge b-ai">AI VERIFIED</span> means the automated suite confirms it and Claude ran it — still pending a human click-through before <b>sign-off</b>.</p>
+
+  <!-- TC1 -->
+  <div class="card">
+    <div class="tag">Task: EC Service — request intake &amp; result delivery</div>
+    <h3>TC1 · Submit a property and get an EC result back</h3>
+    <p class="what">Checks that the ERP can ask for an EC and receive a structured answer without anyone touching the government portal.</p>
+    <ol class="steps">
+      <li>Start the service: in the <code>service</code> folder run <code>npm install</code> then <code>npm run dev</code>.</li>
+      <li>Send a test request (copy the <code>curl</code> command from <code>service/README.md</code>) with a sample property: Chennai zone, North Chennai district, SRO "CHN-NO-TVL", survey number "123/4", dates 2004–2024.</li>
+      <li>Note the <code>requestId</code> that comes back.</li>
+      <li>Ask for the status: <code>GET /v1/ec-requests/&lt;requestId&gt;</code>.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      First response: <code>status: "queued"</code>. Within a few seconds the status becomes <code>"completed"</code> with a result that lists one mortgage entry, an <code>encumbrancePresent: true</code> flag, and a plain-English disclaimer that an EC is not proof of ownership.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts →
+  "completes with ENTRIES_FOUND when the survey number triggers an entry"
+Path: POST /v1/ec-requests → MemoryQueue → pipeline.run →
+  masterdata.resolveUnit → ProviderRouter → MockProvider → store.update → webhook ec.completed
+The mock provider returns an entry when the survey number contains "4".
+Replace MockProvider with the Landeed adapter once sandbox keys exist.</pre>
+    </details>
+  </div>
+
+  <!-- TC2 -->
+  <div class="card">
+    <div class="tag">Task: Human-in-the-loop — operator console</div>
+    <h3>TC2 · An operator clears a CAPTCHA the worker got stuck on</h3>
+    <p class="what">Checks that when automation hits a CAPTCHA, a person can solve it and the job continues — the job is never silently failed.</p>
+    <ol class="steps">
+      <li>Start the service with the operator mode on: set <code>HITL_MODE=console</code> and <code>PROVIDER_ORDER=automation</code> in <code>.env</code>, then <code>npm run dev</code>.</li>
+      <li>Open <a href="/public/console.html">the operator console</a> in a browser.</li>
+      <li>Send a test EC request (as in TC1).</li>
+      <li>Watch the console — a "captcha" task appears. Type any text and click <b>Submit</b>.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      The task disappears from the console after you submit. The request's status briefly showed <code>needs_human</code> and a <code>ec.needs_human</code> webhook was sent; after you answer it moves on (and then reports the portal isn't reachable, which is expected outside India — see note).</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <p class="note">The browser-automation worker itself is a later phase and the TNREGINET portal is geo-blocked outside India, so the run ends with a clear "portal unavailable" — the point of this test is the human handshake, which works.</p>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts → "goes through needs_human ..." and test/router.test.ts.
+HITL model: src/hitl/*. Console API: GET /ops/tasks, POST /ops/tasks/:id/answer.
+AutomationProvider opens a 'captcha' task via ctx.requestHuman(), waits up to 15 min,
+then (no worker deployed) throws ProviderError("portal_unavailable").</pre>
+    </details>
+  </div>
+
+  <!-- TC3 -->
+  <div class="card">
+    <div class="tag">Task: EC Service — input validation</div>
+    <h3>TC3 · A wrong Sub-Registrar office is rejected clearly</h3>
+    <p class="what">Checks that bad location details fail fast with a helpful message, instead of a confusing error later.</p>
+    <ol class="steps">
+      <li>With the service running, send an EC request but set the SRO to <code>NOPE-999</code>.</li>
+      <li>Check the request status.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      Status becomes <code>failed</code> with reason <code>unresolvable</code> and a message listing the SRO offices that <i>are</i> known for that district. A <code>ec.failed</code> webhook is sent.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts → "fails with 'unresolvable' for an unknown SRO"
+and test/masterdata.test.ts. Master data is a PARTIAL seed
+(src/masterdata/tn-registration-units.json) — needs a full SRO list before Phase 1.</pre>
+    </details>
+  </div>
+
+  <!-- TC4 -->
+  <div class="card">
+    <div class="tag">Task: EC Service — result correctness</div>
+    <h3>TC4 · "No records" is never reported as "clean title"</h3>
+    <p class="what">Safety check: an empty EC result must not be turned into "this property is clear" without a human confirming the search was done right.</p>
+    <ol class="steps">
+      <li>Send an EC request with survey number "777" (the mock returns nothing for it).</li>
+      <li>Check the result.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      Status <code>partial</code>, outcome <code>NIL_UNCONFIRMED</code>, <code>encumbrancePresent: null</code> (not <code>false</code>), and a caveat saying it has not been confirmed by an operator. The ERP must treat this as "needs review", not "clean".</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts → "returns partial + NIL_UNCONFIRMED ..."
+and test/parse.test.ts. Logic in src/canonical.ts → deriveOutcome().
+Pre-1975 periods return outcome PERIOD_GAP with the same protection.</pre>
+    </details>
+  </div>
+
+  <!-- TC5 -->
+  <div class="card">
+    <div class="tag">Task: EC Service — de-duplication / cost control</div>
+    <h3>TC5 · The same lookup twice is served from cache</h3>
+    <p class="what">Checks we don't pay a provider twice for the identical search within a short window.</p>
+    <ol class="steps">
+      <li>Set <code>DEDUPE_WINDOW_DAYS=14</code> in <code>.env</code> and start the service.</li>
+      <li>Send an EC request for survey "123/4" and wait for it to complete.</li>
+      <li>Send the <i>same</i> request again with a different Idempotency-Key.</li>
+    </ol>
+    <div class="expect"><b>What you should see</b>
+      The second request completes almost instantly with the same result, and the logs show a <code>dedupe_hit</code> referencing the first request. Certified-EC requests are never de-duplicated.</div>
+    <div class="result"><span>Result:</span><span class="box pass">PASS</span><span class="box">FAIL</span><span class="badge b-ai">AI VERIFIED</span></div>
+    <details><summary>Technical detail</summary>
+      <pre>Covered by test/lifecycle.test.ts → describe("dedupe").
+Param hash in src/util/hash.ts (ignores callbackUrl / reference). Window from config.dedupeWindowDays.</pre>
+    </details>
+  </div>
+
+  <h2>Decisions we need from the client</h2>
+  <table>
+    <tr><th>#</th><th>Decision</th><th>Why it matters</th></tr>
+    <tr><td>D1</td><td>Monthly EC volume + how many need a certified copy</td><td>Vendor pricing, sizing</td></tr>
+    <tr><td>D2</td><td>Which districts / SRO offices</td><td>Vendor coverage check</td></tr>
+    <tr><td>D3</td><td>Budget per EC lookup</td><td>Vendor choice / build vs buy</td></tr>
+    <tr><td>D4</td><td>Is our own browser automation allowed, or licensed-vendor only?</td><td>Whether we build the fallback</td></tr>
+    <tr><td>D5</td><td>Who staffs the operator console + owns an Indian SIM/mailbox for OTPs</td><td>Fallback + certified flow</td></tr>
+    <tr><td>D6</td><td>Data retention + India-only processing rules</td><td>Storage design, vendor DPA</td></tr>
+    <tr><td>D7</td><td>Tech stack sign-off (proposed: Node + TypeScript + Postgres + Redis)</td><td>Production build</td></tr>
+    <tr><td>D8</td><td>Any existing relationship with the TN Registration Dept</td><td>Could unlock a real API</td></tr>
+  </table>
+
+  <h2>Next actions</h2>
+  <ul class="check">
+    <li class="todo">Send the client the scope sheet (D1–D8)</li>
+    <li class="todo">Send the vendor RFPs to Landeed + SurePass (drafts ready)</li>
+    <li class="todo">Client legal review of the vendor route and direct automation</li>
+    <li class="todo">ERP team signs off the API contract (<code>docs/openapi.yaml</code>)</li>
+  </ul>
+
+  <p class="note" style="margin-top:30px">Status legend — <span class="badge b-ai">AI VERIFIED</span> automated tests pass &amp; Claude ran it, pending human confirmation ·
+    <span class="badge b-ok">SIGNED OFF</span> a person completed the click-through ·
+    <span class="badge b-pend">PENDING</span> not started.</p>
+</div>
+</body>
+</html>

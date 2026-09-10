@@ -56,7 +56,7 @@ Log outcomes in [`docs/decision-log.md`](docs/decision-log.md).
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| **0 — Initiation** (current) | Charter, internal API contract, canonical model, RFP drafts, repo skeleton | This doc + `docs/` complete; RFPs sent; decisions D1–D8 tracked |
+| **0 — Initiation** ✅ mostly done | Charter, internal API contract, canonical model, RFP drafts, **working+tested service skeleton**, operator console, dashboard, architecture/runbook/test docs | ✅ `docs/` + `service/` complete & verified · ⏭️ RFPs still to send · ⏭️ decisions D1–D8 to collect |
 | **1 — EC Service MVP** (~3 wks after go) | API layer + request store + queue + Landeed adapter + canonical model + webhook/polling; ERP integration in staging | ERP submits a request in staging, gets a parsed result + PDF via aggregator sandbox |
 | **2 — 2nd provider + caching + dashboards** (~2 wks) | SurePass adapter, provider router + circuit breaker, dedupe cache, observability | Automatic failover demonstrated; cost/turnaround metrics live |
 | **3 — Supervised browser fallback** (~3 wks) | Playwright worker on India infra, account pool + keep-alive, HITL console, EC parser + OCR | End-to-end EC via automation with one human CAPTCHA touch; selectors stable 2 wks |
@@ -66,13 +66,13 @@ Log outcomes in [`docs/decision-log.md`](docs/decision-log.md).
 
 | # | Action | Owner | Output | State |
 |---|---|---|---|---|
-| 1 | Send scope sheet (D1–D8) to client | Raakesh | Filled scope sheet | ⏭️ |
-| 2 | Send RFP to Landeed + SurePass | Raakesh | Sandbox keys + quotes | 📝 draft ready: [`docs/vendor-rfp/`](docs/vendor-rfp/) |
+| 1 | Send scope sheet (D1–D8) to client | Raakesh | Filled scope sheet | ⏭️ draft ready: [`docs/client-scope-sheet.md`](docs/client-scope-sheet.md) |
+| 2 | Send RFP to Landeed + SurePass | Raakesh | Sandbox keys + quotes | 📝 draft ready: [`docs/vendor-rfp/`](docs/vendor-rfp/) — needs sender sign-off |
 | 3 | Request legal review of aggregator + direct-automation routes | Client legal | Go/no-go on Track B fallback | ⏭️ |
-| 4 | Agree internal API contract with ERP team | Raakesh + ERP team | Signed-off `docs/openapi.yaml` | 🔄 draft in `docs/` |
-| 5 | Aggregator sandbox spike (pull 1 EC → canonical model) | Raakesh | Working proof, gap list | ⏭️ after #2 |
-| 6 | From-India automation spike (lock POC selectors) | Raakesh | Working fallback scaffold | ⏭️ if D4 allows |
-| 7 | EC Service repo skeleton | Raakesh | Runnable stub | 🔄 `src/` |
+| 4 | Agree internal API contract with ERP team | Raakesh + ERP team | Signed-off `docs/openapi.yaml` | ✅ drafted; ⏭️ ERP review |
+| 5 | Aggregator sandbox spike (pull 1 EC → canonical model) | Raakesh | Working proof, gap list | ⏭️ after #2 — adapter stub in `service/src/providers/landeed.ts` |
+| 6 | From-India automation spike (lock POC selectors) | Raakesh | Working fallback scaffold | ⏭️ if D4 allows — checklist in [`poc/SELECTORS.md`](poc/SELECTORS.md) |
+| 7 | EC Service skeleton | Raakesh | Runnable + tested | ✅ [`service/`](service/) — 31 tests, demo-verified |
 
 ## 7. Key risks
 
