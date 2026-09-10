@@ -21,7 +21,7 @@ describe("end-to-end on BACKEND=postgres", () => {
       method: "POST",
       url: "/v1/ec-requests",
       headers: { ...AUTH, "idempotency-key": "pg-e2e-0001" },
-      payload: sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }),
+      payload: sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }),
     });
     expect(res.statusCode).toBe(202);
     const id = res.json().requestId as string;
@@ -41,7 +41,7 @@ describe("end-to-end on BACKEND=postgres", () => {
   });
 
   it("idempotency + dedupe work against the DB", async () => {
-    const body = sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } });
+    const body = sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } });
     const a = await app.inject({ method: "POST", url: "/v1/ec-requests", headers: { ...AUTH, "idempotency-key": "pg-idem-xxxx" }, payload: body });
     const b = await app.inject({ method: "POST", url: "/v1/ec-requests", headers: { ...AUTH, "idempotency-key": "pg-idem-xxxx" }, payload: body });
     expect(a.statusCode).toBe(202);

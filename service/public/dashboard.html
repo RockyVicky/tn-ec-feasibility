@@ -92,7 +92,7 @@
     <p class="what">Checks that the ERP can ask for an EC and receive a structured answer without anyone touching the government portal.</p>
     <ol class="steps">
       <li>Start the service: in the <code>service</code> folder run <code>npm install</code> then <code>npm run dev</code>.</li>
-      <li>Send a test request (copy the <code>curl</code> command from <code>service/README.md</code>) with a sample property: Chennai zone, North Chennai district, SRO "CHN-NO-TVL", survey number "123/4", dates 2004–2024.</li>
+      <li>Send a test request (copy the <code>curl</code> command from <code>service/README.md</code>) with a sample property: Chennai zone, SRO "Thiruvottiyur", village "Thiruvottiyur", survey number "123/4", dates 2004–2024.</li>
       <li>Note the <code>requestId</code> that comes back.</li>
       <li>Ask for the status: <code>GET /v1/ec-requests/&lt;requestId&gt;</code>.</li>
     </ol>

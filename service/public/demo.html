@@ -64,10 +64,10 @@
     </div>
     <div class="row2">
       <div><label>Zone</label><input id="zone" value="Chennai" /></div>
-      <div><label>District</label><input id="district" value="North Chennai" /></div>
+      <div><label>District (advisory)</label><input id="district" value="Chennai" /></div>
     </div>
     <div class="row2">
-      <div><label>SRO code</label><input id="sroCode" value="CHN-NO-TVL" /></div>
+      <div><label>SRO</label><input id="sroCode" value="Thiruvottiyur" /></div>
       <div><label>Village</label><input id="village" value="Thiruvottiyur" /></div>
     </div>
     <div class="row2">
@@ -115,7 +115,7 @@ for (const [name, patch] of Object.entries(SCENARIOS)) {
   b.onclick = () => {
     ["zone","district","sroCode","village","surveyNumber","subdivisionNumber","from","to"].forEach((f) => {
       if (f === "surveyNumber") $(f).value = "123/4";
-      if (f === "sroCode") $(f).value = "CHN-NO-TVL";
+      if (f === "sroCode") $(f).value = "Thiruvottiyur";
       if (f === "from") $(f).value = "2004-01-01";
     });
     for (const [k, v] of Object.entries(patch)) if ($(k)) $(k).value = v;

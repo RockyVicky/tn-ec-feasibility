@@ -4,7 +4,7 @@ import { ProviderError, type EcProvider, type RetrieveContext } from "../src/pro
 import type { EcRequest } from "../src/contract.ts";
 import { EC_DISCLAIMER, type EcResult } from "../src/canonical.ts";
 
-const req = { searchType: "EC_WISE", certified: false, property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "T", surveyNumber: "1" }, period: { from: "2004-01-01", to: "2024-12-31" }, callbackUrl: "https://x", priority: "normal" } as EcRequest;
+const req = { searchType: "EC_WISE", certified: false, property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "T", surveyNumber: "1" }, period: { from: "2004-01-01", to: "2024-12-31" }, callbackUrl: "https://x", priority: "normal" } as EcRequest;
 
 const ctx: Omit<RetrieveContext, "log"> & { log: RetrieveContext["log"] } = {
   requestId: "r1",

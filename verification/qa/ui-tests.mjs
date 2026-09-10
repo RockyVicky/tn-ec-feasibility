@@ -154,7 +154,7 @@ async function run() {
     const res = await fetch(`${OPS}/v1/ec-requests`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer qa-key", "idempotency-key": `ui-${Date.now()}` },
-      body: JSON.stringify({ searchType: "EC_WISE", certified: false, property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "12", subdivisionNumber: "1" }, period: { from: "2004-01-01", to: "2024-12-31" }, callbackUrl: "https://example.com/x" }),
+      body: JSON.stringify({ searchType: "EC_WISE", certified: false, property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "12", subdivisionNumber: "1" }, period: { from: "2004-01-01", to: "2024-12-31" }, callbackUrl: "https://example.com/x" }),
     });
     eq(res.status, 202, "submit accepted");
     await opage.waitForSelector(".task", { timeout: 8000 });

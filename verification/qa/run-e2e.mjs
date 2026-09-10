@@ -70,7 +70,7 @@ function body(over = {}) {
   return JSON.stringify({
     searchType: "EC_WISE",
     certified: false,
-    property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" },
+    property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" },
     period: { from: "2004-01-01", to: "2024-12-31" },
     callbackUrl: `${SINK}/hook`,
     reference: "QA",
@@ -166,16 +166,16 @@ async function run() {
 
   // ===== TC3 — unknown SRO =====
   await check("TC3", "functional", "unknown SRO -> failed / unresolvable with helpful message", async () => {
-    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "NOPE-999", village: "X", surveyNumber: "1" } });
+    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "NOPE-999", village: "X", surveyNumber: "1" } });
     eq(s.status, "failed", "status");
     eq(s.failure.code, "unresolvable", "failure code");
-    assert(/CHN-NO-TVL|Thiruvottiyur/i.test(s.failure.message), "message lists valid SROs");
+    assert(/Examples in Chennai|Adayar|Thiruvottiyur/i.test(s.failure.message), "message lists valid SROs");
     eq(s.failure.retryable, false, "not retryable");
   });
 
   // ===== TC4 — nil not reported as clean =====
   await check("TC4", "functional", "no records + not verified -> partial / NIL_UNCONFIRMED, encumbrancePresent null", async () => {
-    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "777", subdivisionNumber: "1" } });
+    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "777", subdivisionNumber: "1" } });
     eq(s.status, "partial", "status");
     eq(s.result.outcome, "NIL_UNCONFIRMED", "outcome");
     eq(s.result.encumbrancePresent, null, "encumbrancePresent must be null, never false");
@@ -185,10 +185,10 @@ async function run() {
   // ===== TC5 — dedupe =====
   await check("TC5", "functional", "identical informational request within window served from cache", async () => {
     const uniqueSurvey = "44" + Date.now().toString().slice(-4); // contains 4 -> entries
-    const first = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: uniqueSurvey, subdivisionNumber: "1" } });
+    const first = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: uniqueSurvey, subdivisionNumber: "1" } });
     eq(first.status, "completed", "first completes");
     const t0 = Date.now();
-    const second = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: uniqueSurvey, subdivisionNumber: "1" } });
+    const second = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: uniqueSurvey, subdivisionNumber: "1" } });
     const dt = Date.now() - t0;
     eq(second.status, "completed", "second completes");
     eq(second.result.entryCount, first.result.entryCount, "same result");
@@ -197,7 +197,7 @@ async function run() {
 
   await check("TC5b", "boundary", "certified request is NOT deduped", async () => {
     const survey = "48" + Date.now().toString().slice(-4);
-    const prop = { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: survey, subdivisionNumber: "1" };
+    const prop = { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: survey, subdivisionNumber: "1" };
     const a = await submitAndWait(A, { certified: true, property: prop });
     eq(a.certified, true, "certified flag");
     assert(a.estimate?.type === "days", "certified estimate in days");
@@ -231,7 +231,7 @@ async function run() {
     assert(/from must be <= to/i.test(await r.text()), "explains the problem");
   });
   await check("N7", "negative", "DOCUMENT_WISE without documentNumber -> 400", async () => {
-    const r = await post(A, body({ searchType: "DOCUMENT_WISE", property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL" } }));
+    const r = await post(A, body({ searchType: "DOCUMENT_WISE", property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur" } }));
     eq(r.status, 400, "status");
   });
   await check("N8", "negative", "invalid date format -> 400", async () => {
@@ -266,7 +266,7 @@ async function run() {
 
   // ===== Security =====
   await check("S1", "security", "injection-ish string in surveyNumber is handled, no 500", async () => {
-    const r = await post(A, body({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "1' OR '1'='1", subdivisionNumber: "1" } }));
+    const r = await post(A, body({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "1' OR '1'='1", subdivisionNumber: "1" } }));
     assert(r.status === 202 || r.status === 400, `graceful, got ${r.status}`);
     if (r.status === 202) {
       const s = await (async () => { const id = (await r.json()).requestId; for (let i = 0; i < 60; i++) { const x = await (await get(A, id)).json(); if (["completed", "partial", "failed"].includes(x.status)) return x; await sleep(50); } })();
@@ -298,13 +298,13 @@ async function run() {
     eq(r.status, 202, "accepted");
   });
   await check("B2", "boundary", "pre-1975 period -> PERIOD_GAP, encumbrancePresent null", async () => {
-    const s = await submitAndWait(A, { period: { from: "1960-01-01", to: "2024-12-31" }, property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "301", subdivisionNumber: "1" } });
+    const s = await submitAndWait(A, { period: { from: "1960-01-01", to: "2024-12-31" }, property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "301", subdivisionNumber: "1" } });
     eq(s.result.outcome, "PERIOD_GAP", "outcome");
     eq(s.result.encumbrancePresent, null, "null, not false");
     assert(s.result.caveats.some((c) => c.code === "ONLINE_DATA_FROM_1975"), "carries 1975 caveat");
   });
   await check("B4", "boundary", "survey 999 triggers a nil_review HITL task (auto-answered), webhook needs_human fired", async () => {
-    const res = await post(A, body({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "999", subdivisionNumber: "1" } }));
+    const res = await post(A, body({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "999", subdivisionNumber: "1" } }));
     const { requestId } = await res.json();
     for (let i = 0; i < 80; i++) { const s = await (await get(A, requestId)).json(); if (["completed", "partial", "failed"].includes(s.status)) break; await sleep(50); }
     await sleep(300);
@@ -324,7 +324,7 @@ async function run() {
   // ===== Webhook contract =====
   await check("W1", "webhook", "ec.received + ec.completed delivered with a VALID signature", async () => {
     await fetch(`${SINK}/reset`, { method: "POST" });
-    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "412", subdivisionNumber: "1" }, reference: "W1" });
+    const s = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "412", subdivisionNumber: "1" }, reference: "W1" });
     eq(s.status, "completed", "completed");
     await sleep(400);
     const evs = await (await fetch(`${SINK}/events`)).json();
@@ -339,7 +339,7 @@ async function run() {
     const times = [];
     for (let i = 0; i < 20; i++) {
       const t0 = Date.now();
-      const s = await submitAndWait(A, { property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: `4${i}${Date.now().toString().slice(-3)}`, subdivisionNumber: "1" } });
+      const s = await submitAndWait(A, { property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: `4${i}${Date.now().toString().slice(-3)}`, subdivisionNumber: "1" } });
       assert(s.status === "completed", `#${i} completed`);
       times.push(Date.now() - t0);
     }

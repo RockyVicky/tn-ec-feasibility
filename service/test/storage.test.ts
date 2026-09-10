@@ -37,7 +37,7 @@ describe("documents flow through the pipeline", () => {
       method: "POST",
       url: "/v1/ec-requests",
       headers: { ...AUTH, "idempotency-key": "doc-test-0001" },
-      payload: sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }),
+      payload: sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }),
     });
     const id = res.json().requestId as string;
     const final = await waitForTerminal(app, id);

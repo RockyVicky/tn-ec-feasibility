@@ -1,34 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { MasterDataError, coverage, resolveUnit } from "../src/masterdata/index.ts";
+import { MasterDataError, coverage, listZones, resolveUnit } from "../src/masterdata/index.ts";
 
 describe("resolveUnit", () => {
-  it("resolves by SRO code, case-insensitively", () => {
-    const u = resolveUnit({ zone: "chennai", district: "North Chennai", sro: "chn-no-tvl" });
-    expect(u).toMatchObject({ zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", sroName: "Thiruvottiyur" });
+  it("resolves an SRO by name within its zone, case/punctuation-insensitively", () => {
+    const u = resolveUnit({ zone: "chennai", sro: "thiru vottiyur" });
+    expect(u).toMatchObject({ zone: "Chennai", sroCode: "Thiruvottiyur", sroName: "Thiruvottiyur" });
   });
 
-  it("resolves by SRO name", () => {
-    const u = resolveUnit({ zone: "Chennai", district: "North Chennai", sro: "Thiruvottiyur" });
-    expect(u.sroCode).toBe("CHN-NO-TVL");
+  it("accepts a zone alias (Thanjavur -> Tanjore)", () => {
+    const u = resolveUnit({ zone: "Thanjavur", sro: "Kumbakonam Joint I" });
+    expect(u.zone).toBe("Tanjore");
   });
 
-  it("throws MasterDataError for an unknown zone", () => {
-    expect(() => resolveUnit({ zone: "Atlantis", district: "X", sro: "Y" })).toThrow(MasterDataError);
+  it("echoes the advisory district unchanged", () => {
+    const u = resolveUnit({ zone: "Chengalpattu", district: "Kancheepuram", sro: "Thiruporur" });
+    expect(u).toMatchObject({ zone: "Chengalpattu", district: "Kancheepuram", sroCode: "Thiruporur" });
   });
 
-  it("throws for a valid zone but unknown SRO", () => {
+  it("throws for an unknown zone", () => {
+    expect(() => resolveUnit({ zone: "Atlantis", sro: "X" })).toThrow(MasterDataError);
+  });
+
+  it("points to the right zone when the SRO is real but in another zone", () => {
     try {
-      resolveUnit({ zone: "Chennai", district: "North Chennai", sro: "Nowhere" });
+      resolveUnit({ zone: "Chennai", sro: "Thiruporur" }); // Thiruporur is Chengalpattu
       expect.unreachable();
     } catch (e) {
       expect((e as MasterDataError).field).toBe("sroCode");
+      expect((e as Error).message).toContain("Chengalpattu");
     }
   });
 
-  it("reports partial coverage", () => {
+  it("throws for an SRO that does not exist anywhere", () => {
+    expect(() => resolveUnit({ zone: "Chennai", sro: "Nowhereville" })).toThrow(/unknown SRO/);
+  });
+
+  it("covers all 11 zones and 595 SROs", () => {
     const c = coverage();
-    expect(c.partial).toBe(true);
+    expect(c.partial).toBe(false);
     expect(c.zones).toBe(11);
-    expect(c.sros).toBeGreaterThan(10);
+    expect(c.sros).toBe(595);
+    expect(listZones()).toContain("Chennai");
   });
 });

@@ -45,8 +45,8 @@ export function sampleBody(overrides: Record<string, unknown> = {}): Record<stri
     certified: false,
     property: {
       zone: "Chennai",
-      district: "North Chennai",
-      sroCode: "CHN-NO-TVL",
+      district: "Chennai",
+      sroCode: "Thiruvottiyur",
       village: "Thiruvottiyur",
       surveyNumber: "123/4",
       subdivisionNumber: "1",

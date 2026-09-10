@@ -15,7 +15,7 @@ describe("request lifecycle (mock provider)", () => {
   }
 
   it("completes with ENTRIES_FOUND when the survey number triggers an entry", async () => {
-    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }));
+    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } }));
     const final = await waitForTerminal(app, id);
     expect(final.status).toBe("completed");
     expect(final.result?.outcome).toBe("ENTRIES_FOUND");
@@ -26,7 +26,7 @@ describe("request lifecycle (mock provider)", () => {
   });
 
   it("returns partial + NIL_UNCONFIRMED when nothing is found and not verified", async () => {
-    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "777", subdivisionNumber: "1" } }));
+    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "777", subdivisionNumber: "1" } }));
     const final = await waitForTerminal(app, id);
     expect(final.status).toBe("partial");
     expect(final.result?.outcome).toBe("NIL_UNCONFIRMED");
@@ -35,7 +35,7 @@ describe("request lifecycle (mock provider)", () => {
   });
 
   it("goes through needs_human when a nil review is triggered (auto-answered in tests)", async () => {
-    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "999", subdivisionNumber: "1" } }));
+    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "999", subdivisionNumber: "1" } }));
     const final = await waitForTerminal(app, id);
     // auto HITL answers confirmedNil=false -> stays NIL_UNCONFIRMED/partial, but a needs_human webhook fired
     expect(webhooks.byName("ec.needs_human").length).toBeGreaterThanOrEqual(1);
@@ -43,7 +43,7 @@ describe("request lifecycle (mock provider)", () => {
   });
 
   it("fails with 'unresolvable' for an unknown SRO", async () => {
-    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "NOPE-999", village: "X", surveyNumber: "1" } }));
+    const id = await submit(sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "NOPE-999", village: "X", surveyNumber: "1" } }));
     const final = await waitForTerminal(app, id);
     expect(final.status).toBe("failed");
     expect(final.failure?.code).toBe("unresolvable");
@@ -51,7 +51,7 @@ describe("request lifecycle (mock provider)", () => {
   });
 
   it("PERIOD_GAP when the requested period predates 1975", async () => {
-    const id = await submit(sampleBody({ period: { from: "1960-01-01", to: "2024-12-31" }, property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "555", subdivisionNumber: "1" } }));
+    const id = await submit(sampleBody({ period: { from: "1960-01-01", to: "2024-12-31" }, property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "555", subdivisionNumber: "1" } }));
     const final = await waitForTerminal(app, id);
     expect(final.result?.outcome).toBe("PERIOD_GAP");
     expect(final.status).toBe("partial");
@@ -61,7 +61,7 @@ describe("request lifecycle (mock provider)", () => {
 describe("dedupe", () => {
   it("serves a second identical informational request from cache", async () => {
     const { app } = await makeApp({ DEDUPE_WINDOW_DAYS: "14" });
-    const body = sampleBody({ property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } });
+    const body = sampleBody({ property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur", village: "Thiruvottiyur", surveyNumber: "123/4", subdivisionNumber: "1" } });
     const r1 = await app.inject({ method: "POST", url: "/v1/ec-requests", headers: { ...AUTH, "idempotency-key": "d1-xxxxxxxx" }, payload: body });
     const id1 = r1.json().requestId as string;
     await waitForTerminal(app, id1);

@@ -54,7 +54,7 @@ describe("POST /v1/ec-requests validation", () => {
       method: "POST",
       url: "/v1/ec-requests",
       headers: { ...AUTH, "idempotency-key": "k".repeat(12) },
-      payload: sampleBody({ searchType: "DOCUMENT_WISE", property: { zone: "Chennai", district: "North Chennai", sroCode: "CHN-NO-TVL" } }),
+      payload: sampleBody({ searchType: "DOCUMENT_WISE", property: { zone: "Chennai", district: "Chennai", sroCode: "Thiruvottiyur" } }),
     });
     expect(res.statusCode).toBe(400);
   });
