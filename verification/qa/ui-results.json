@@ -1,0 +1,103 @@
+{
+  "at": "2026-09-10T18:04:33.894Z",
+  "pass": 16,
+  "fail": 0,
+  "results": [
+    {
+      "id": "D1",
+      "desc": "dashboard loads with correct title",
+      "status": "PASS",
+      "ms": 6
+    },
+    {
+      "id": "D2",
+      "desc": "all five h2 sections present",
+      "status": "PASS",
+      "ms": 22
+    },
+    {
+      "id": "D3",
+      "desc": "5 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
+      "status": "PASS",
+      "ms": 112
+    },
+    {
+      "id": "D4",
+      "desc": "decisions table lists D1..D8",
+      "status": "PASS",
+      "ms": 3
+    },
+    {
+      "id": "D5",
+      "desc": "no 'SIGNED OFF' badge used for AI-only verification",
+      "status": "PASS",
+      "ms": 2
+    },
+    {
+      "id": "D6",
+      "desc": "no console/page errors on load",
+      "status": "PASS",
+      "ms": 0
+    },
+    {
+      "id": "D7",
+      "desc": "dark mode: body background is dark, text is light",
+      "status": "PASS",
+      "ms": 783
+    },
+    {
+      "id": "D8",
+      "desc": "light mode renders and screenshot captured",
+      "status": "PASS",
+      "ms": 723
+    },
+    {
+      "id": "D9",
+      "desc": "mobile viewport: no horizontal overflow",
+      "status": "PASS",
+      "ms": 689
+    },
+    {
+      "id": "D10",
+      "desc": "technical-detail sections are collapsed by default",
+      "status": "PASS",
+      "ms": 544
+    },
+    {
+      "id": "C1",
+      "desc": "console loads with correct title",
+      "status": "PASS",
+      "ms": 541
+    },
+    {
+      "id": "C2",
+      "desc": "empty state shown when there are no tasks",
+      "status": "PASS",
+      "ms": 567
+    },
+    {
+      "id": "C3",
+      "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
+      "status": "PASS",
+      "ms": 4963
+    },
+    {
+      "id": "C4",
+      "desc": "typing an answer + Submit clears the task from the list",
+      "status": "PASS",
+      "ms": 130
+    },
+    {
+      "id": "C5",
+      "desc": "console links to the project dashboard",
+      "status": "PASS",
+      "ms": 3
+    },
+    {
+      "id": "C6",
+      "desc": "no console/page errors during the console flow",
+      "status": "PASS",
+      "ms": 0
+    }
+  ]
+}

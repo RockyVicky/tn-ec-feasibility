@@ -28,7 +28,9 @@ tested (31 tests), and demo-verified. Blocked on 8 client decisions before Phase
 | [`docs/test-plan.md`](docs/test-plan.md) · [`docs/manual-test-cases.md`](docs/manual-test-cases.md) | Test coverage + tester-friendly cases |
 | [`docs/client-scope-sheet.md`](docs/client-scope-sheet.md) | D1–D8 questionnaire to send the client |
 | [`docs/vendor-rfp/`](docs/vendor-rfp/) | RFP + cover email for Landeed / SurePass (drafts) |
-| [`verification/AI-VERIFICATION.md`](verification/AI-VERIFICATION.md) | What was run and confirmed |
+| [`verification/QA-REPORT.md`](verification/QA-REPORT.md) | Full QA pass — 79 checks (unit + API black-box + Playwright UI), 1 defect found & fixed |
+| [`verification/qa/`](verification/qa/) | The runnable QA suites + screenshots |
+| [`verification/AI-VERIFICATION.md`](verification/AI-VERIFICATION.md) | First-pass verification record |
 | [`poc/`](poc/) · [`poc/SELECTORS.md`](poc/SELECTORS.md) | Playwright scaffold for the TNREGINET flow + selector lock-down checklist |
 | [`research/`](research/) | Research log + sources |
 

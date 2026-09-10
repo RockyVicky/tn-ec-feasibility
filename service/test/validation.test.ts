@@ -29,6 +29,26 @@ describe("POST /v1/ec-requests validation", () => {
     expect(JSON.stringify(res.json())).toContain("from must be <= to");
   });
 
+  it("rejects an impossible calendar date (2024-13-45)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/ec-requests",
+      headers: { ...AUTH, "idempotency-key": "k".repeat(12) },
+      payload: sampleBody({ period: { from: "2024-13-45", to: "2025-01-01" } }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects a real-shape but non-existent date (2023-02-29)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/ec-requests",
+      headers: { ...AUTH, "idempotency-key": "k".repeat(12) },
+      payload: sampleBody({ period: { from: "2023-02-29", to: "2025-01-01" } }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
   it("requires documentNumber + registrationYear for DOCUMENT_WISE", async () => {
     const res = await app.inject({
       method: "POST",

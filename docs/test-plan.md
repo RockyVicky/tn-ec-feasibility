@@ -20,6 +20,17 @@
 - Postgres store implementation
 - load / concurrency behaviour
 
+## Black-box + UI (`verification/qa/`)
+
+- `run-e2e.mjs` — 30 API checks against hermetically-spawned service instances:
+  the 5 manual cases (TC1–TC5) plus negative, security, boundary, webhook-signature
+  and performance-smoke checks. Independent HMAC verification via `webhook-sink.mjs`.
+- `ui-tests.mjs` — 16 Playwright + Chromium checks: dashboard structure, dark/light
+  mode contrast, mobile no-overflow, and a real click-through of the operator
+  console clearing a CAPTCHA task.
+
+Latest run: 33 + 30 + 16 = **79 pass, 0 fail**. Full report: `verification/QA-REPORT.md`.
+
 ## Manual
 
 See `manual-test-cases.md` (tester-friendly) — the same cases are rendered as

@@ -8,7 +8,13 @@ import type { EcResult } from "./canonical.ts";
 export const SearchType = z.enum(["EC_WISE", "DOCUMENT_WISE", "PLOT_FLAT_WARD_WISE"]);
 export type SearchType = z.infer<typeof SearchType>;
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+  .refine((s) => {
+    const d = new Date(`${s}T00:00:00.000Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  }, "not a valid calendar date");
 
 export const EcRequestSchema = z
   .object({

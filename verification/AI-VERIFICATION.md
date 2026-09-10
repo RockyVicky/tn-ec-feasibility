@@ -6,6 +6,11 @@ in this environment. **Pending human sign-off** (a person's own click-through).
 
 **Date:** 10 September 2026 · **Env:** Windows 11, Node 22.13, service on localhost.
 
+> A fuller QA pass (79 checks across unit, API black-box, and Playwright browser
+> tests, plus exploratory/negative/security testing) is in
+> [`QA-REPORT.md`](QA-REPORT.md). It found and fixed one defect (impossible
+> calendar dates accepted). The notes below are the original first-pass record.
+
 ## 1. Automated suite
 
 ```
