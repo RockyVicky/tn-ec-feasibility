@@ -74,7 +74,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
 
   // ---- auth ----
   app.addHook("onRequest", async (req, reply) => {
-    if (req.url === "/healthz" || req.url.startsWith("/ops") || req.url.startsWith("/public") || req.url === "/" || req.url.startsWith("/dashboard")) return;
+    if (req.url === "/healthz" || req.url.startsWith("/ops") || req.url.startsWith("/public") || req.url === "/" || req.url.startsWith("/dashboard") || req.url.startsWith("/demo")) return;
     const key = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
     const tenant = Object.entries(config.tenantKeys).find(([, v]) => v === key)?.[0];
     if (!tenant) return reply.code(401).send({ error: "unauthorized" });
@@ -146,6 +146,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<FastifyInstance
   await app.register(fastifyStatic, { root: PUBLIC_DIR, prefix: "/public/" });
   app.get("/", async (_req, reply) => reply.redirect("/public/console.html"));
   app.get("/dashboard", async (_req, reply) => reply.redirect("/public/dashboard.html"));
+  app.get("/demo", async (_req, reply) => reply.redirect("/public/demo.html"));
 
   app.decorate("_internals", { store, hitl, queue, pipeline, config });
   return app;

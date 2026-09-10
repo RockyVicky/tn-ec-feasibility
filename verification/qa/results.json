@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-10T18:04:21.784Z",
+  "at": "2026-09-10T18:17:33.915Z",
   "total": 30,
   "pass": 30,
   "fail": 0,
@@ -10,49 +10,49 @@
       "category": "functional",
       "desc": "EC_WISE survey 123/4 -> completed, ENTRIES_FOUND, mortgage entry, disclaimer",
       "status": "PASS",
-      "ms": 27
+      "ms": 29
     },
     {
       "id": "TC2",
       "category": "functional",
       "desc": "automation provider opens a CAPTCHA task, operator answers, job continues",
       "status": "PASS",
-      "ms": 44
+      "ms": 62
     },
     {
       "id": "TC2b",
       "category": "functional",
       "desc": "answered HITL task disappears from the open list",
       "status": "PASS",
-      "ms": 1
+      "ms": 2
     },
     {
       "id": "TC3",
       "category": "functional",
       "desc": "unknown SRO -> failed / unresolvable with helpful message",
       "status": "PASS",
-      "ms": 6
+      "ms": 8
     },
     {
       "id": "TC4",
       "category": "functional",
       "desc": "no records + not verified -> partial / NIL_UNCONFIRMED, encumbrancePresent null",
       "status": "PASS",
-      "ms": 5
+      "ms": 8
     },
     {
       "id": "TC5",
       "category": "functional",
       "desc": "identical informational request within window served from cache",
       "status": "PASS",
-      "ms": 10
+      "ms": 14
     },
     {
       "id": "TC5b",
       "category": "boundary",
       "desc": "certified request is NOT deduped",
       "status": "PASS",
-      "ms": 6
+      "ms": 8
     },
     {
       "id": "N1",
@@ -66,7 +66,7 @@
       "category": "negative",
       "desc": "wrong bearer token -> 401",
       "status": "PASS",
-      "ms": 4
+      "ms": 3
     },
     {
       "id": "N3",
@@ -80,7 +80,7 @@
       "category": "negative",
       "desc": "malformed JSON -> 400, not 500",
       "status": "PASS",
-      "ms": 6
+      "ms": 5
     },
     {
       "id": "N5",
@@ -108,7 +108,7 @@
       "category": "negative",
       "desc": "invalid date format -> 400",
       "status": "PASS",
-      "ms": 1
+      "ms": 2
     },
     {
       "id": "N9",
@@ -136,7 +136,7 @@
       "category": "negative",
       "desc": "same Idempotency-Key + different body -> 409",
       "status": "PASS",
-      "ms": 6
+      "ms": 7
     },
     {
       "id": "N13",
@@ -150,28 +150,28 @@
       "category": "security",
       "desc": "injection-ish string in surveyNumber is handled, no 500",
       "status": "PASS",
-      "ms": 4
+      "ms": 5
     },
     {
       "id": "S2",
       "category": "security",
       "desc": "oversized field (20KB) does not crash the service",
       "status": "PASS",
-      "ms": 4
+      "ms": 6
     },
     {
       "id": "S3",
       "category": "security",
       "desc": "reference length cap enforced (>120 chars -> 400)",
       "status": "PASS",
-      "ms": 1
+      "ms": 3
     },
     {
       "id": "S4",
       "category": "security",
       "desc": "FINDING CHECK: GET request by id has no per-tenant ownership check",
       "status": "PASS",
-      "ms": 4
+      "ms": 6
     },
     {
       "id": "B1",
@@ -185,21 +185,21 @@
       "category": "boundary",
       "desc": "pre-1975 period -> PERIOD_GAP, encumbrancePresent null",
       "status": "PASS",
-      "ms": 9
+      "ms": 4
     },
     {
       "id": "B4",
       "category": "boundary",
       "desc": "survey 999 triggers a nil_review HITL task (auto-answered), webhook needs_human fired",
       "status": "PASS",
-      "ms": 365
+      "ms": 372
     },
     {
       "id": "B5",
       "category": "boundary",
       "desc": "concurrent duplicate submits (same key) create only one request",
       "status": "PASS",
-      "ms": 7
+      "ms": 5
     },
     {
       "id": "W1",
@@ -211,7 +211,7 @@
     {
       "id": "P1-metrics",
       "category": "performance",
-      "desc": "p50=3ms p95=68ms (mock provider, in-memory)",
+      "desc": "p50=6ms p95=68ms (mock provider, in-memory)",
       "status": "INFO"
     },
     {
@@ -219,7 +219,7 @@
       "category": "performance",
       "desc": "20 sequential requests all complete; report p50/p95",
       "status": "PASS",
-      "ms": 184
+      "ms": 182
     }
   ]
 }

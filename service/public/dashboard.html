@@ -73,6 +73,7 @@
     <li>One standard "EC result" format that every data source maps into</li>
     <li>Working service skeleton: request intake, validation, queue, provider routing with automatic failover, webhook delivery, de-duplication</li>
     <li>Operator console for the human steps (CAPTCHA / OTP / checking "no records" results)</li>
+    <li>Manual test client (<code>/demo</code>) — drive the service from a browser, no curl needed</li>
     <li>EC results-table parser (turns the portal's table into structured data)</li>
     <li>Test suites — 79 checks (unit, API black-box, browser UI), all passing</li>
     <li>Vendor RFP + outreach email drafts for Landeed and SurePass</li>
@@ -82,7 +83,7 @@
   </ul>
 
   <h2>Manual test cases</h2>
-  <p class="note">Each card is one thing a tester can check by hand. <span class="badge b-ai">AI VERIFIED</span> means the automated suite confirms it and Claude ran it — still pending a human click-through before <b>sign-off</b>.</p>
+  <p class="note">Each card is one thing a tester can check by hand — easiest via the <a href="/demo">manual test client</a>. <span class="badge b-ai">AI VERIFIED</span> means the automated suite confirms it and Claude ran it (see <code>verification/QA-REPORT.md</code> and the recorded walkthrough) — still pending a human click-through before <b>sign-off</b>.</p>
 
   <!-- TC1 -->
   <div class="card">

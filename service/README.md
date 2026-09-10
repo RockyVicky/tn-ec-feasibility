@@ -46,6 +46,7 @@ curl -s localhost:8080/v1/ec-requests/<requestId> -H 'authorization: Bearer dev-
 #    "7" returns an unverified nil; "9" triggers a nil-review HITL task)
 ```
 
+- Manual test client (drive it from a browser): <http://localhost:8080/demo>
 - Operator console: <http://localhost:8080/> → `/public/console.html`
 - Project dashboard: <http://localhost:8080/dashboard>
 

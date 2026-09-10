@@ -24,7 +24,7 @@ export class MockProvider implements EcProvider {
     const now = new Date().toISOString();
     const survey = req.property.surveyNumber ?? "";
 
-    const entries: EcEntry[] = survey.includes("4")
+    const entries: EcEntry[] = survey.includes("4") || survey.toUpperCase().includes("CAP")
       ? [
           {
             seq: 1,
@@ -48,6 +48,17 @@ export class MockProvider implements EcProvider {
           },
         ]
       : [];
+
+    // Demo hook: a survey number containing "CAP" exercises the CAPTCHA
+    // human-in-the-loop path end to end (operator clears it, then the job
+    // completes normally). Used by the walkthrough recording.
+    if (survey.toUpperCase().includes("CAP")) {
+      const cap = await ctx.requestHuman({
+        kind: "captcha",
+        context: { note: "TNREGINET EC search CAPTCHA", imageRef: "mock://captcha.png" },
+      });
+      ctx.log("mock.captcha.cleared", { requestId: ctx.requestId, byOperator: cap.kind === "captcha" });
+    }
 
     let nilHumanVerified = false;
     if (entries.length === 0 && survey.includes("9") && req.period.from >= "1975-01-01") {

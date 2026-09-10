@@ -43,6 +43,19 @@ All passed. Highlights:
 - **Webhooks:** `ec.received` and `ec.completed` both delivered to the callback; **every delivery carried a valid HMAC-SHA256 signature** (verified independently, not with the service's own code).
 - **Performance smoke:** 20 sequential requests, all completed. p50 ≈ 4 ms, p95 ≈ 62 ms (mock provider, in-memory — real latency will be dominated by the aggregator/portal, not this service).
 
+## 3a. Recorded walkthrough
+
+A ~32 s screen recording of a live manual-test session driven end to end:
+dashboard tour → the **Manual Test Client** (`/demo`) running TC1 (entries found),
+TC4 (no records), TC3 (bad SRO), and the invalid-date rejection → the **CAPTCHA
+human-in-the-loop flow** (request stalls at "waiting for an operator", the operator
+opens the console, types the code, submits, and the job completes).
+
+- `verification/qa/video/manual-test-walkthrough.webm` (plays in any modern browser / VLC)
+- `verification/qa/video/manual-test-walkthrough.gif`
+
+Regenerate: `node verification/qa/record-walkthrough.mjs`.
+
 ## 4. Web UI testing (Playwright)
 
 **Dashboard** (`/dashboard`): loads with the right title; all 5 sections present; 5 test-case cards each with numbered steps, a "what you should see" box, PASS/FAIL boxes and an `AI VERIFIED` badge; decisions table lists D1–D8; **no card claims `SIGNED OFF`**; no console errors; renders correctly in dark and light mode (contrast checked programmatically); **no horizontal overflow at 375 px mobile width**; technical-detail sections collapsed by default. Screenshots: `verification/qa/screens/dashboard-{light,dark,mobile}.png`.
