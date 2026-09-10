@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-10T19:42:53.873Z",
+  "at": "2026-09-10T19:51:27.715Z",
   "pass": 16,
   "fail": 0,
   "results": [
@@ -13,25 +13,25 @@
       "id": "D2",
       "desc": "all five h2 sections present",
       "status": "PASS",
-      "ms": 21
+      "ms": 22
     },
     {
       "id": "D3",
       "desc": "5 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 83
+      "ms": 93
     },
     {
       "id": "D4",
       "desc": "decisions table lists D1..D8",
       "status": "PASS",
-      "ms": 3
+      "ms": 5
     },
     {
       "id": "D5",
       "desc": "no 'SIGNED OFF' badge used for AI-only verification",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "D6",
@@ -43,31 +43,31 @@
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 720
+      "ms": 741
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 715
+      "ms": 718
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 663
+      "ms": 654
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 542
+      "ms": 555
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 547
+      "ms": 555
     },
     {
       "id": "C2",
@@ -79,19 +79,19 @@
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 5006
+      "ms": 4997
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 132
+      "ms": 127
     },
     {
       "id": "C5",
       "desc": "console links to the project dashboard",
       "status": "PASS",
-      "ms": 4
+      "ms": 5
     },
     {
       "id": "C6",

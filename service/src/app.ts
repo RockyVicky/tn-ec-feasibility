@@ -235,7 +235,11 @@ function buildProviders(config: Config): EcProvider[] {
     new MockProvider(),
     new LandeedProvider(config.aggregators.landeed),
     new SurepassProvider(config.aggregators.surepass),
-    new AutomationProvider(),
+    new AutomationProvider(
+      config.automation.portalUrl
+        ? { portalUrl: config.automation.portalUrl, username: config.automation.username, password: config.automation.password }
+        : {},
+    ),
   ];
 }
 

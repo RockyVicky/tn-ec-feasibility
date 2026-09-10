@@ -62,9 +62,12 @@ export class MemoryHitlStore implements HitlStore {
 }
 
 function autoAnswer(task: HitlTask): HitlAnswer {
+  // The mock portal exposes the correct answer so unattended tests can proceed;
+  // the real portal never does, so a real operator answers.
+  const mock = (task.context as { _mockAnswer?: string })?._mockAnswer;
   switch (task.kind) {
-    case "captcha": return { kind: "captcha", value: "DEMO" };
-    case "otp": return { kind: "otp", value: "000000" };
+    case "captcha": return { kind: "captcha", value: mock || "DEMO" };
+    case "otp": return { kind: "otp", value: mock || "000000" };
     case "nil_review": return { kind: "nil_review", confirmedNil: false, note: "auto (phase-0)" };
     case "ocr_review": return { kind: "ocr_review", corrections: {}, note: "auto (phase-0)" };
   }

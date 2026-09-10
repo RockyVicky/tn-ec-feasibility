@@ -26,6 +26,7 @@ export interface Config {
     landeed: { baseUrl: string; apiKey: string };
     surepass: { baseUrl: string; apiKey: string };
   };
+  automation: { portalUrl: string; username: string; password: string };
   /** ASSUMPTION (docs/assumptions.md A5): dedupe window for informational ECs. */
   dedupeWindowDays: number;
   /** ASSUMPTION (A6): webhook delivery retry budget. */
@@ -48,6 +49,11 @@ export function loadConfig(): Config {
     aggregators: {
       landeed: { baseUrl: env("LANDEED_BASE_URL", ""), apiKey: env("LANDEED_API_KEY", "") },
       surepass: { baseUrl: env("SUREPASS_BASE_URL", ""), apiKey: env("SUREPASS_API_KEY", "") },
+    },
+    automation: {
+      portalUrl: env("AUTOMATION_PORTAL_URL", ""),
+      username: env("AUTOMATION_USERNAME", ""),
+      password: env("AUTOMATION_PASSWORD", ""),
     },
     dedupeWindowDays: Number(env("DEDUPE_WINDOW_DAYS", "14")),
     webhookRetry: { attempts: 8, baseDelayMs: 2000 },
