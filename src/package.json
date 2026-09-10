@@ -1,0 +1,21 @@
+{
+  "name": "ec-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "EC Service — async internal API the client ERP calls for Tamil Nadu EC retrieval. Phase 0 skeleton.",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "node --experimental-strip-types server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

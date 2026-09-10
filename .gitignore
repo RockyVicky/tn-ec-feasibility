@@ -1,0 +1,8 @@
+node_modules/
+poc/config.json
+poc/artifacts/
+src/dist/
+*.log
+.env
+.env.*
+.DS_Store
