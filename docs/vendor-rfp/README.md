@@ -14,6 +14,7 @@ his own name — framed as a developer evaluation, not company procurement.
 | `email-surepass.md` | Draft email to SurePass — `contact@surepass.io` (verified) + self-serve get-api-key |
 | `rfp-lite.md` | ~14-question list — optional attachment, right-sized for a solo eval |
 | `rfp.md` | Full 25-question RFP — company-procurement style; send only if a vendor asks |
+| `sample-properties.md` | Real TN properties (from public court records) for the sandbox test + a "no records" test |
 | `attachment-in-scope-districts.md` | District/SRO list template (fill with your test districts) |
 | `attachment-expected-volume.md` | Volume template — for a personal project this is just "tens/month while prototyping" |
 
