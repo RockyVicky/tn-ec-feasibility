@@ -1,33 +1,41 @@
-# Vendor RFP pack
+# Vendor outreach pack
 
-For choosing a licensed Tamil Nadu EC data provider (feasibility recommendation:
-aggregator-first). See `REPORT.md` §5 for the vendor comparison.
+For evaluating a licensed Tamil Nadu EC data provider as the data source, instead
+of automating the TNREGINET portal. See `REPORT.md` §5 for the comparison.
+
+**Context:** Raakesh is pursuing this as a personal project. The emails go out under
+his own name — framed as a developer evaluation, not company procurement.
 
 ## Files
 
 | File | What |
 |---|---|
-| `email-landeed.md` | Draft cover email to Landeed (`ravi@landeed.com`) |
-| `email-surepass.md` | Draft cover email to SurePass (`contact@surepass.io`) |
-| `rfp.md` | The 25-question RFP — attach to both emails (export to PDF/doc) |
-| `attachment-in-scope-districts.md` | District/SRO coverage list — **fill from client D2** |
-| `attachment-expected-volume.md` | Volume estimate for pricing — **fill from client D1** |
-
-Also attach `docs/canonical-ec-result.md` (our result schema) so vendors can say
-how cleanly they map to it.
+| `email-landeed.md` | Draft email to Landeed (`ravi@landeed.com`) |
+| `email-surepass.md` | Draft email to SurePass (`contact@surepass.io` + self-serve get-api-key) |
+| `rfp-lite.md` | ~14-question list — optional attachment, right-sized for a solo eval |
+| `rfp.md` | Full 25-question RFP — company-procurement style; send only if a vendor asks |
+| `attachment-in-scope-districts.md` | District/SRO list template (fill with your test districts) |
+| `attachment-expected-volume.md` | Volume template — for a personal project this is just "tens/month while prototyping" |
 
 ## Before sending
 
-1. Fill the sender identity in each email (your name/title/company/phone/email).
-2. Fill the two attachment templates from the client's scope-sheet answers.
-3. Add 3–5 real sample properties for the sandbox demo.
-4. Confirm with the client whether the emails go from you or from them.
+1. Fill the `[ ]` placeholders — phone (optional), test districts, a response-by date.
+2. List 3–5 real sample properties (survey no. + village + SRO + period) for the demo.
+3. Send from raakeshofficial7777@gmail.com.
 
-**Claude drafts only — a person sends these.**
+**Claude drafts only — Raakesh sends these.**
 
-## After sending
+## Realistic expectations for a personal project
 
-Replies → sandbox credentials → run the sandbox spike (one real EC each, mapped to
-the canonical model) → score side by side → recommend one → client legal reviews
-terms → sign → wire the real adapter (`service/src/providers/landeed.ts` /
-`surepass.ts`) and retire the mock provider.
+- **SurePass** has a self-serve API-key flow — you may be able to start testing
+  without waiting for a reply. EC may need a separate onboarding; the email asks.
+- **Landeed**'s API is more sales-led; a personal project may get a slower or
+  lighter response, or a pointer to a pay-as-you-go tier. That's fine.
+- Enterprise asks (DPA, warranty, indemnity, SLA credits) don't really apply to a
+  solo project — they're in `rfp.md` for if this ever becomes a real client build.
+
+## After a reply
+
+Get a test key → pull one real EC through each → map it to the canonical model
+(`docs/canonical-ec-result.md`) → compare coverage / price / fit → wire the real
+adapter (`service/src/providers/landeed.ts` / `surepass.ts`) and retire the mock.

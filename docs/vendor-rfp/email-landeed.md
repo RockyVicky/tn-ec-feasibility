@@ -1,43 +1,42 @@
 # Draft email — Landeed
 
-**Send from:** [your name] <[your email]>
+**Send from:** Raakesh R <raakeshofficial7777@gmail.com>
 **To:** ravi@landeed.com  (or via https://www.landeed.com/contact)
-**Cc:** [client project contact, if any]
-**Attach:** rfp.md (as PDF/doc), in-scope-districts.xlsx, expected-volume.md, canonical-ec-result.md
-**Do not send** until the sender identity, district list and volume numbers are confirmed.
+**Attach:** rfp-lite.md (optional), sample-properties list
+**Fill before sending:** phone (optional), the [ ] placeholders, a response-by date.
+**Claude drafts only — Raakesh sends this.**
 
 ---
 
-**Subject:** B2B API enquiry — Tamil Nadu Encumbrance Certificate retrieval
+**Subject:** Developer enquiry — Tamil Nadu Encumbrance Certificate API
 
 Hi Ravi,
 
-I'm [name], [title] at [company]. We're building an integration that lets a client's
-ERP pull Tamil Nadu Encumbrance Certificates programmatically, and we're evaluating
-API providers for the data layer. Landeed is on our shortlist because you already
-offer an API for Indian land records including TN EC.
+I'm Raakesh, a software engineer. I'm building a personal project that pulls Tamil
+Nadu Encumbrance Certificates programmatically (an ERP-style integration, currently
+a prototype), and I'd like to evaluate Landeed's API as the data source rather than
+automating the TNREGINET portal myself.
 
-We'd like to understand:
+A few questions:
 
-- **Coverage** — TN EC retrieval via API by survey number / plot / document number,
-  and which districts and SRO offices you cover (our in-scope list is attached).
-- **Output** — whether you return structured data (entries, parties, instrument type,
-  dates, amounts) or only a PDF, and how a "no records" result is represented.
+- **Coverage** — does your API support TN EC retrieval by survey number / plot /
+  document number, and roughly which districts / SRO offices? My test properties are
+  in [districts — e.g. Chennai, Chengalpattu].
+- **Output** — do you return structured data (list of registered entries, parties,
+  instrument type, dates, amounts) or only a PDF? How is a "no records found" result
+  represented?
 - **Informational vs certified** — do you support the digitally-signed (QR) EC, and
   what's the typical turnaround for each?
-- **Sandbox access** — so we can run a short technical evaluation before any commitment.
-- **Commercials** — B2B pricing (per successful EC, volume tiers), and whether a DPA
-  and a written lawful-supply warranty are available.
-- **Compliance** — on what basis you access TNREGINET data, and where our query data
-  is processed and stored.
+- **Sandbox / developer access** — is there a test environment or a pay-as-you-go
+  tier I can use for a small-volume evaluation (tens of lookups/month while
+  prototyping)?
+- **Pricing** — per-EC cost at low volume, and whether there's a developer/free tier
+  to start.
 
-I've attached a short RFP with the full list, our expected volume, and the result
-schema we'd map your response into. Happy to jump on a call — I'm free [two or three
-time windows, with timezone].
-
-Could you send written answers and sandbox credentials by [date, ~2 weeks out]?
+I've kept this short on purpose — happy to share more about the project or take a
+quick call. Could you point me to the right docs and a way to get a test key?
 
 Thanks,
-[name]
-[title], [company]
-[phone] · [email]
+Raakesh R
+raakeshofficial7777@gmail.com
+[phone — optional]
