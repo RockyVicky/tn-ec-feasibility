@@ -3,6 +3,7 @@ poc/config.json
 poc/artifacts/
 service/dist/
 service/.env
+verification/india-run/
 *.log
 .env
 .env.*
