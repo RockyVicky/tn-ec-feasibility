@@ -80,6 +80,7 @@ Enumerated directly in a browser on 10 Sep 2026.
 - "Search & View EC" informational PDF = **free**.
 - Certified copy: statutory search fee ≈ ₹15–30 for year 1 + ₹5–10 per extra year; computerisation fee ₹100 for post-1987 records. Paid via portal online payment gateway.
 - Full EC PDF download requires a **free registered account**; a basic search may run without login but the complete details + PDF need login.
+- **Confirmed directly (11 Sep 2026, live portal, logged-out session):** the "வில்லங்கச் சான்று விவரம் பார்வையிடுதல்" (EC details view — the free/informational path) search form loads and is fully fillable (search-by-property or search-by-document, zone/district/SRO/village cascading selects) **with no login prompt at all** — the header still shows "User Registration"/"Login" as unused options. Not yet confirmed how far past clicking Search a logged-out session gets (whether the results table itself, or only the CAPTCHA/submit step, additionally requires login) — the cascading district dropdown didn't populate during this check, which is a portal/interaction quirk to retest, not evidence either way.
 
 ### Aggregator compliance posture
 - Landeed: "independent technology platform, does not represent any government department"; claims "100% compliant with state data policies", "records fetched directly from official state portals". YC-backed, founded 2022, Hyderabad. Competitors named: Teal, mypatta, Zapkey.
