@@ -13,7 +13,27 @@ export type CaveatCode =
   | "ONLINE_DATA_FROM_1975" | "PARTIAL_PERIOD_DIGITISED" | "OCR_LOW_CONFIDENCE"
   | "TRANSLITERATION_AMBIGUITY" | "VILLAGE_NAME_FUZZY_MATCH"
   | "MULTIPLE_SUBDIVISIONS_PRESENT" | "NIL_NOT_HUMAN_VERIFIED"
-  | "CERTIFIED_PENDING_SIGNATURE" | "CERTIFIED_COPY_SIGNED";
+  | "CERTIFIED_PENDING_SIGNATURE" | "CERTIFIED_COPY_SIGNED"
+  | "DOCUMENT_INDEX_ONLY";
+
+/**
+ * The real portal's property/document search doesn't always land directly on an
+ * EC entries table — a search can first resolve to one or more matching *indexed
+ * documents* (this shape, confirmed against a live result on 12 Sep 2026), which
+ * the citizen then opens individually (or applies for a certified copy of) to see
+ * the actual instrument details. This is not an EcEntry: it carries no instrument
+ * type, dates, consideration, or parties — just enough to identify which real
+ * document(s) matched the search.
+ */
+export interface DocumentMatch {
+  documentNumber: string;
+  sroName: string | null;
+  registrationDistrict: string | null;
+  registrationVillage: string | null;
+  /** the portal often lists several sub-divisions against one document, comma-joined */
+  surveySubDivisionNumbers: string[];
+  propertyType: string | null;
+}
 
 export type PartyRole = "EXECUTANT" | "CLAIMANT" | "OTHER";
 
