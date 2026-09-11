@@ -40,7 +40,11 @@ On-call procedures. Phase 1 owns paging; Phase 0 is best-effort.
 
 **Symptoms:** automation login failing; `captcha_unrecoverable` or auth errors.
 
-1. Accounts deactivate after ~3 months idle — check the keep-alive cron ran.
+1. Accounts deactivate on two clocks, confirmed from the portal's own registration
+   notice: a **new** account auto-deactivates if not used within **7 days** of
+   creation; an **existing** account auto-deactivates if not used for **3 months**
+   from its last activity. Check the keep-alive cron ran, and — for a freshly
+   created account — that someone actually used it once inside the first week.
 2. Rotate to a spare account in the pool.
 3. Re-activate locked accounts manually (login + OTP from the controlled mailbox/SIM). This is an ops task.
 4. Root-cause: were we hitting rate limits? Reduce per-account concurrency.
