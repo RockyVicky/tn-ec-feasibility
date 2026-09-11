@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-11T06:57:56.381Z",
+  "at": "2026-09-11T20:17:53.179Z",
   "pass": 16,
   "fail": 0,
   "results": [
@@ -7,19 +7,19 @@
       "id": "D1",
       "desc": "dashboard loads with correct title",
       "status": "PASS",
-      "ms": 5
+      "ms": 6
     },
     {
       "id": "D2",
       "desc": "all five h2 sections present",
       "status": "PASS",
-      "ms": 20
+      "ms": 29
     },
     {
       "id": "D3",
       "desc": "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 106
+      "ms": 129
     },
     {
       "id": "D4",
@@ -37,55 +37,55 @@
       "id": "D6",
       "desc": "no console/page errors on load",
       "status": "PASS",
-      "ms": 0
+      "ms": 1
     },
     {
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 784
+      "ms": 819
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 778
+      "ms": 784
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 697
+      "ms": 702
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 536
+      "ms": 546
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 568
+      "ms": 543
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 557
+      "ms": 556
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 4998
+      "ms": 5004
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 163
+      "ms": 133
     },
     {
       "id": "C5",

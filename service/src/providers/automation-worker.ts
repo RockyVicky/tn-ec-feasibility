@@ -21,17 +21,93 @@ export interface WorkerConfig {
   headless?: boolean;
 }
 
+/**
+ * The real portal's homepage runs a promo modal ("Presence Less Registration")
+ * that reappears on most navigations and sits on top of the login form — Playwright
+ * correctly refuses to fill a field it's covering ("element is not visible"),
+ * which is the exact failure this fixes. Best-effort, several strategies, never
+ * throws: dismissing a promo popup is not part of the flow worth failing over.
+ */
+async function dismissPromoModal(page: import("playwright").Page): Promise<void> {
+  try {
+    await page.keyboard.press("Escape").catch(() => {});
+    const candidates = [
+      'button[aria-label="Close" i]',
+      '[data-dismiss="modal"]',
+      ".modal.show .close",
+      ".modal .close",
+      'button:has-text("×")',
+      '[class*="close" i]:visible',
+    ];
+    for (const sel of candidates) {
+      const el = page.locator(sel).first();
+      if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) {
+        await el.click({ timeout: 2000 }).catch(() => {});
+        break;
+      }
+    }
+    await page.waitForTimeout(300);
+  } catch {
+    // best-effort only
+  }
+}
+
+/**
+ * The real portal's login inputs sit in a panel that's hidden until the header
+ * "Login" control toggles it open (a JS-driven show/hide, not a page navigation) —
+ * confirmed directly: loading the page alone leaves #username present but not
+ * visible. Try a few real-world candidates (English + Tamil, button or link) and
+ * click whichever is actually visible and clickable.
+ */
+async function revealLoginPanel(page: import("playwright").Page): Promise<void> {
+  const candidates = [
+    page.getByRole("button", { name: /^(login|sign in|உள்நுழைவு)$/i }),
+    page.getByRole("link", { name: /^(login|sign in|உள்நுழைவு)$/i }),
+    page.locator('button:has-text("Login"), a:has-text("Login")'),
+    page.locator('button:has-text("Sign In"), a:has-text("Sign In")'),
+    page.locator("#loginBtn, .login-btn, [onclick*=\"login\" i]"),
+  ];
+  for (const loc of candidates) {
+    const el = loc.first();
+    if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) {
+      await el.click({ timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      if (await page.locator("#username").first().isVisible().catch(() => false)) return;
+    }
+  }
+}
+
 /** For the mock portal only: read the answer it exposes so tests can proceed unattended. */
 async function mockAnswer(page: import("playwright").Page): Promise<string | undefined> {
   return page.locator("#captcha-answer").first().textContent({ timeout: 200 }).catch(() => null).then((t) => t?.trim() || undefined);
 }
 
 async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContext, inputSel: string): Promise<void> {
-  const shot = await page.screenshot();
+  // Screenshot just the CAPTCHA image itself when we can find one near the answer
+  // box — smaller and clearer for the operator than a full-page capture. Common
+  // patterns: an <img> right next to/before the answer input, or one whose id/src
+  // hints at "captcha". Falls back to the full page if none of that matches.
+  const imgCandidates = [
+    `${inputSel} ~ img`,
+    `img[id*="captcha" i]`,
+    `img[src*="captcha" i]`,
+    `img[alt*="captcha" i]`,
+  ];
+  let shot: Buffer | undefined;
+  for (const sel of imgCandidates) {
+    const img = page.locator(sel).first();
+    if (await img.count().catch(() => 0)) {
+      shot = await img.screenshot().catch(() => undefined);
+      if (shot) break;
+    }
+  }
+  shot ??= await page.screenshot();
+
   const _mockAnswer = await mockAnswer(page);
   const ans = await ctx.requestHuman({
     kind: "captcha",
-    context: { note: "portal CAPTCHA", imageBase64: shot.toString("base64").slice(0, 64) + "…", _mockAnswer },
+    // full image, not a truncated fragment — the operator has to actually read this
+    context: { note: "portal CAPTCHA", imageBase64: `data:image/png;base64,${shot.toString("base64")}`, _mockAnswer },
   });
   if (ans.kind !== "captcha" || !ans.value) throw new ProviderError("captcha_unrecoverable", "no CAPTCHA answer");
   await page.fill(inputSel, ans.value);
@@ -46,7 +122,15 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
 
     // 1. login
     await page.goto(`${base}/portal`, { waitUntil: "domcontentloaded" });
+    await dismissPromoModal(page);
     if (await page.locator("#username").count()) {
+      // On the real portal, #username exists in the DOM from page load but stays
+      // hidden until the header "Login" control toggles its panel open — a plain
+      // goto() never triggers that, so fill() times out waiting for visibility.
+      if (!(await page.locator("#username").first().isVisible().catch(() => false))) {
+        await revealLoginPanel(page);
+        await dismissPromoModal(page); // the promo can reappear after the click too
+      }
       await page.fill("#username", cfg.username ?? "worker");
       await page.fill("#password", cfg.password ?? "worker");
       await solveCaptcha(page, ctx, "#captcha");
@@ -57,6 +141,7 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     // 2. EC search form
     if (!(await page.locator("#ec-submit").count())) {
       await page.goto(`${base}/portal/ec-search`, { waitUntil: "domcontentloaded" });
+      await dismissPromoModal(page);
     }
     const p = req.property;
     for (const [sel, val] of [

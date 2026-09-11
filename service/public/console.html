@@ -24,6 +24,7 @@
   .empty { color:var(--muted); text-align:center; padding:40px; }
   .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
   code { background:var(--bg); padding:1px 5px; border-radius:4px; }
+  .captcha-img { display:block; margin:4px 0 10px; border:1px solid var(--line); border-radius:6px; max-width:100%; background:#fff; }
 </style>
 </head>
 <body>
@@ -64,12 +65,23 @@ async function load() {
 function render(t) {
   const el = document.createElement('div');
   el.className = 'task';
-  const ctx = JSON.stringify(t.context || {});
+  // imageBase64 and the test-only _mockAnswer are shown specially (or not at
+  // all) below — don't dump the (potentially huge) raw image data as text.
+  const { imageBase64, _mockAnswer, ...restContext } = t.context || {};
+  const ctx = JSON.stringify(restContext);
   el.innerHTML = `
     <h3>${t.kind.replace('_',' ')}</h3>
     <div class="meta">request <code>${t.requestId}</code> · task <code>${t.id}</code> · opened ${new Date(t.createdAt).toLocaleTimeString()}<br>context: <code>${ctx}</code></div>
     <div class="row" data-kind="${t.kind}"></div>`;
   const row = el.querySelector('.row');
+
+  if (imageBase64) {
+    const img = document.createElement('img');
+    img.className = 'captcha-img';
+    img.src = imageBase64;
+    img.alt = 'CAPTCHA to solve';
+    el.querySelector('.meta').insertAdjacentElement('afterend', img);
+  }
 
   if (t.kind === 'captcha' || t.kind === 'otp') {
     const input = document.createElement('input');
