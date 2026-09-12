@@ -8,7 +8,7 @@
  * a human-in-the-loop task with a screenshot; a real operator answers.
  */
 import { chromium, type Browser } from "playwright";
-import { writeFile } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { RetrieveContext } from "./types.ts";
 import { ProviderError } from "./types.ts";
@@ -130,6 +130,36 @@ async function clickFirst(page: import("playwright").Page, selectors: string[]):
     }
   }
   return false;
+}
+
+/**
+ * Playwright's own video recorder proved unreliable for the specific moment
+ * right around clicking Search — twice, with two different fix attempts, it
+ * cut off before showing the click's effect (confirmed by a direct
+ * page.screenshot() showing the same page state the video's last frame did,
+ * ruling out a settle-timing problem in our own code). Explicit screenshots
+ * have worked every single time tonight (the CAPTCHA image, the post-submit
+ * screenshot), so build the video from a rapid burst of those instead of
+ * depending on Playwright's internal screencast encoder at all. Runs
+ * concurrently with the actual click/submit flow — start it just before
+ * clicking, stop it a few seconds after the page settles.
+ */
+function startBurstCapture(page: import("playwright").Page, dir: string, intervalMs = 300, maxDurationMs = 15000) {
+  const state = { stop: false };
+  const done = (async () => {
+    let i = 0;
+    const start = Date.now();
+    while (!state.stop && Date.now() - start < maxDurationMs) {
+      i += 1;
+      // jpeg, not png: the frames get piped into Playwright's own bundled
+      // ffmpeg afterward to build a video, and that build only has an mjpeg
+      // decoder wired in (no png decoder) — confirmed by testing it directly.
+      const shot = await page.screenshot({ type: "jpeg", quality: 85 }).catch(() => null);
+      if (shot) await writeFile(path.join(dir, `f-${String(i).padStart(4, "0")}.jpg`), shot).catch(() => {});
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  })();
+  return { stop: () => { state.stop = true; }, done };
 }
 
 /**
@@ -317,17 +347,31 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     let postClickText = "";
     for (let attempt = 1; attempt <= MAX_CAPTCHA_ATTEMPTS; attempt++) {
       await solveCaptcha(page, ctx, ["#txt_Captcha", "#ec-captcha"]);
+
+      // Start the screenshot-burst right as we're about to click — see
+      // startBurstCapture's doc comment for why this replaces Playwright's own
+      // video recorder for this specific moment.
+      const burstDir = cfg.recordVideoDir ? path.join(cfg.recordVideoDir, `click-burst-attempt${attempt}`) : null;
+      if (burstDir) await mkdir(burstDir, { recursive: true }).catch(() => {});
+      const burst = burstDir ? startBurstCapture(page, burstDir) : null;
+
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
       // Confirmed live: a reappeared promo modal silently ate this exact click —
       // clickFirst used to report success regardless, so the worker scraped the
       // unchanged homepage and reported a false "no records found". Now that
       // clickFirst honestly reports failure, treat it as a real failure too,
       // rather than pressing on to scrape whatever's on screen.
-      if (!searchClicked) throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
+      if (!searchClicked) {
+        burst?.stop();
+        throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
+      }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
       await page.waitForTimeout(800);
       postClickText = await page.locator("body").innerText().catch(() => "");
       ctx.log("automation.debug", { step: "post_search_click", attempt, searchClicked, url: page.url(), bodyTextSample: postClickText.slice(0, 400) });
+      // Keep capturing a little longer after the read above, in case the page
+      // is still settling, then stop and let the burst loop's last iteration finish.
+      if (burst) { await page.waitForTimeout(3000).catch(() => {}); burst.stop(); await burst.done; }
 
       if (!/please enter valid captcha/i.test(postClickText)) break; // accepted (or some other outcome) — stop retrying
       ctx.log("automation.captcha_rejected", { attempt, maxAttempts: MAX_CAPTCHA_ATTEMPTS });
