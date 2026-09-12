@@ -425,7 +425,10 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const g = globalThis as any;
           const out: Record<string, unknown> = {};
-          try { out.checkMand = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise() : "fn-missing"; } catch (e) { out.checkMandError = String(e); }
+          try {
+            out.checkMandSource = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise.toString().slice(0, 3000) : "fn-missing";
+            out.checkMand = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise() : "fn-missing";
+          } catch (e) { out.checkMandError = String(e); }
           try { out.villageDetailsValid = typeof g.getVillageDetails === "function" ? await g.getVillageDetails() : "fn-missing"; } catch (e) { out.villageDetailsError = String(e); }
           try { out.encryptPlotFlat = typeof g.encryptPlotFlat === "function" ? g.encryptPlotFlat() : "fn-missing"; } catch (e) { out.encryptPlotFlatError = String(e); }
           return out;
