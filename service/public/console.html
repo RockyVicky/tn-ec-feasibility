@@ -24,7 +24,9 @@
   .empty { color:var(--muted); text-align:center; padding:40px; }
   .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
   code { background:var(--bg); padding:1px 5px; border-radius:4px; }
-  .captcha-img { display:block; margin:4px 0 10px; border:1px solid var(--line); border-radius:6px; max-width:100%; background:#fff; }
+  .captcha-img { display:block; margin:4px 0 6px; border:1px solid var(--line); border-radius:6px; max-width:100%; background:#fff; }
+  .timer { display:inline-block; font-size:12px; color:var(--muted); margin-bottom:10px; font-variant-numeric:tabular-nums; }
+  .timer.warn { color:var(--warn); font-weight:600; }
 </style>
 </head>
 <body>
@@ -92,6 +94,20 @@ function render(t) {
     img.src = imageBase64;
     img.alt = 'CAPTCHA to solve';
     el.querySelector('.meta').insertAdjacentElement('afterend', img);
+
+    if (t.kind === 'captcha') {
+      // Real-world government CAPTCHAs commonly expire after a short window
+      // (confirmed live: an answer submitted ~40s after this screenshot was
+      // taken can be rejected as stale) — this timer just tells the operator
+      // how long they've been looking at it, so slow answers aren't a mystery
+      // when the site rejects them. It only touches its own text node on tick,
+      // never the input, so it can't repeat the old focus-stealing bug.
+      const timer = document.createElement('span');
+      timer.className = 'timer';
+      timer.dataset.created = t.createdAt;
+      timer.textContent = '0s since screenshot';
+      img.insertAdjacentElement('afterend', timer);
+    }
   }
 
   if (t.kind === 'captcha' || t.kind === 'otp') {
@@ -128,9 +144,18 @@ async function answer(id, body) {
   load(true);
 }
 
+function tickTimers() {
+  document.querySelectorAll('.timer').forEach((el) => {
+    const elapsed = Math.floor((Date.now() - new Date(el.dataset.created).getTime()) / 1000);
+    el.textContent = elapsed + 's since screenshot';
+    el.classList.toggle('warn', elapsed >= 30);
+  });
+}
+
 document.getElementById('refresh').onclick = () => load(true);
 load();
 setInterval(load, 5000);
+setInterval(tickTimers, 1000);
 </script>
 </body>
 </html>

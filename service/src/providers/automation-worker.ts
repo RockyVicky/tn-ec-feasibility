@@ -301,19 +301,38 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     await fillFirst(page, ["#txt_PeriodStartDt", "#from"], isoToDmy(req.period.from));
     await fillFirst(page, ["#txt_PeriodEndDt", "#to"], isoToDmy(req.period.to));
 
-    // 3. search CAPTCHA
-    await solveCaptcha(page, ctx, ["#txt_Captcha", "#ec-captcha"]);
-    const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
-    // Confirmed live: a reappeared promo modal silently ate this exact click —
-    // clickFirst used to report success regardless, so the worker scraped the
-    // unchanged homepage and reported a false "no records found". Now that
-    // clickFirst honestly reports failure, treat it as a real failure too,
-    // rather than pressing on to scrape whatever's on screen.
-    if (!searchClicked) throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
-    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-    await page.waitForTimeout(800);
-    const postClickText = await page.locator("body").innerText().catch(() => "");
-    ctx.log("automation.debug", { step: "post_search_click", searchClicked, url: page.url(), bodyTextSample: postClickText.slice(0, 400) });
+    // 3. search CAPTCHA — retried with a *fresh* screenshot if the site rejects
+    // the answer. Confirmed live: a real-world CAPTCHA here can expire between
+    // when the operator sees the screenshot and when the answer actually gets
+    // typed and submitted (read it, type it, click Submit in the console, then
+    // the worker fills + clicks Search on the real page) — that round trip
+    // easily takes 20-40+ seconds, and the site accepted the exact same kind of
+    // answer fine when a human filled it live in one go. When that happens the
+    // page shows "Please Enter Valid Captcha" and generates a new code for the
+    // next try — so retry with that new code rather than treating one stale
+    // answer as a hard failure.
+    const MAX_CAPTCHA_ATTEMPTS = 3;
+    let postClickText = "";
+    for (let attempt = 1; attempt <= MAX_CAPTCHA_ATTEMPTS; attempt++) {
+      await solveCaptcha(page, ctx, ["#txt_Captcha", "#ec-captcha"]);
+      const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
+      // Confirmed live: a reappeared promo modal silently ate this exact click —
+      // clickFirst used to report success regardless, so the worker scraped the
+      // unchanged homepage and reported a false "no records found". Now that
+      // clickFirst honestly reports failure, treat it as a real failure too,
+      // rather than pressing on to scrape whatever's on screen.
+      if (!searchClicked) throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      postClickText = await page.locator("body").innerText().catch(() => "");
+      ctx.log("automation.debug", { step: "post_search_click", attempt, searchClicked, url: page.url(), bodyTextSample: postClickText.slice(0, 400) });
+
+      if (!/please enter valid captcha/i.test(postClickText)) break; // accepted (or some other outcome) — stop retrying
+      ctx.log("automation.captcha_rejected", { attempt, maxAttempts: MAX_CAPTCHA_ATTEMPTS });
+      if (attempt === MAX_CAPTCHA_ATTEMPTS) {
+        throw new ProviderError("captcha_unrecoverable", `CAPTCHA rejected ${MAX_CAPTCHA_ATTEMPTS} times in a row (likely expiring before the answer round-trips back)`, true);
+      }
+    }
     // Belt-and-braces: a successful click can still land somewhere unexpected
     // (a stale CSRF token, a server-side error page, etc.) — confirmed live
     // that this specific homepage tile text shows up when that happens. Fail

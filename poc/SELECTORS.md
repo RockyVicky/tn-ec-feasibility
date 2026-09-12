@@ -201,3 +201,37 @@ result produced tonight after this was discovered should be treated as
 unverified, not as evidence of a real "no records" outcome. Next real test
 should happen after a cooldown period, with a single well-spaced attempt
 rather than rapid repeated ones, before trusting this path again.
+
+## Follow-up (12 Sep 2026, same night) — a real captured example, and a fix that's still incomplete
+
+One more recorded run (with the request user answering as fast as possible)
+finally caught the real behavior on video: after submitting, the page showed
+**"Please Enter Valid Captcha"** with a freshly-regenerated code — not a
+homepage redirect. This is a normal, expected rejection message, not a broken
+page. Best explanation: the round trip from "operator sees the screenshot" to
+"answer is typed, submitted, and the page reacts" easily runs 20-40+ seconds
+through this HITL console, and a real-world government CAPTCHA commonly has a
+much shorter validity window specifically to defeat this pattern — a human
+answering it live and immediately doesn't hit this at all, which matches every
+successful manual walkthrough earlier tonight.
+
+Fixed: the worker now retries up to 3 times, taking a *fresh* screenshot each
+time, when it detects "Please Enter Valid Captcha" on the page — tested for
+real via a new mock-portal scenario (survey number starting `RETRY`) that
+forces exactly one rejection before accepting. The operator console also now
+shows a live elapsed-time counter next to the CAPTCHA image (turns amber past
+30s) so it's visible how much of that window has already been used.
+
+**This did not fully close the loop.** A live retest after shipping the fix
+hit a *third* variant: the post-click page read as a plain homepage-like
+response — not the "Please Enter Valid Captcha" text the retry logic looks
+for, and not matching the existing homepage safety-check either (which needs
+two specific homepage phrases both present, and apparently they don't always
+render into `innerText()` the same way). So the retry never triggered, and a
+false NIL_UNCONFIRMED slipped through again. The detection needs broadening —
+ideally a positive check for something that only ever appears on a genuine
+results page (e.g. "Data Availability Period", "No Documents registered",
+an actual results table), rather than trying to enumerate every way a
+rejected/expired submission can look. Left as a known gap rather than guessed
+at further tonight, given how many live hits this portal has already taken in
+one evening.

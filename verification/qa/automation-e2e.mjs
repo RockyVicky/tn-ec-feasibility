@@ -89,6 +89,12 @@ async function main() {
   ok(c.status === "completed", `status completed through the OTP step (got ${c.status})`);
   ok(c.result?.entries?.length === 2, `entries scraped after OTP`);
 
+  console.log("\n— CAPTCHA rejected once, retried with a fresh one (survey starts RETRY) —");
+  const e = await submit({ ...base, surveyNumber: "RETRY4" });
+  ok(e.status === "completed", `status completed after one retry (got ${e.status})`);
+  ok(e.result?.outcome === "ENTRIES_FOUND", `outcome ENTRIES_FOUND (got ${e.result?.outcome})`);
+  ok(e.result?.entries?.length === 2, `2 entries scraped after retry (got ${e.result?.entries?.length})`);
+
   console.log("\n— scanned pre-1987 EC -> OCR + review flag —");
   const d = await submit({ ...base, surveyNumber: "OLD-88/2" });
   ok(["completed", "partial"].includes(d.status), `status terminal (got ${d.status})`);

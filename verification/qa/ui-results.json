@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-12T09:50:43.824Z",
+  "at": "2026-09-12T11:29:41.352Z",
   "pass": 17,
   "fail": 0,
   "results": [
@@ -13,13 +13,13 @@
       "id": "D2",
       "desc": "all five h2 sections present",
       "status": "PASS",
-      "ms": 20
+      "ms": 22
     },
     {
       "id": "D3",
       "desc": "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 92
+      "ms": 104
     },
     {
       "id": "D4",
@@ -37,61 +37,61 @@
       "id": "D6",
       "desc": "no console/page errors on load",
       "status": "PASS",
-      "ms": 1
+      "ms": 0
     },
     {
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 771
+      "ms": 778
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 762
+      "ms": 764
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 722
+      "ms": 694
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 541
+      "ms": 546
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 549
+      "ms": 543
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 557
+      "ms": 554
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 5030
+      "ms": 4966
     },
     {
       "id": "C3b",
       "desc": "CAPTCHA input keeps focus and typed text across the 5s auto-refresh",
       "status": "PASS",
-      "ms": 5687
+      "ms": 5661
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 111
+      "ms": 104
     },
     {
       "id": "C5",

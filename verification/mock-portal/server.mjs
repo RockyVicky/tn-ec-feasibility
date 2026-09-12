@@ -134,6 +134,33 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/portal/ec-result" && req.method === "POST") {
     if (!sess.loggedIn) { res.writeHead(302, { location: "/portal" }); return res.end(); }
     const f = await body(req);
+
+    // survey starting "RETRY" -> simulates a real-portal CAPTCHA that expired
+    // between screenshot and submission: reject the first attempt outright
+    // (regardless of the answer given), re-render the search form with a fresh
+    // CAPTCHA and a "Please Enter Valid Captcha" message, and accept normally
+    // from the second attempt on. Exercises the automation worker's retry loop.
+    if (/^RETRY/i.test(f.survey ?? "") && !sess.retryDone) {
+      sess.retryDone = true;
+      sess.captcha = gen(5);
+      const opts = (arr) => arr.map((v) => `<option>${v}</option>`).join("");
+      return send(page("EC Search — Mock TNREGINET", `
+        <h2>Encumbrance Certificate — Search &amp; View</h2>
+        <p style="color:red">Please Enter Valid Captcha</p>
+        <form method="post" action="/portal/ec-result">
+          <p>Zone <select name="zone" id="zone">${opts(Object.keys(ZONES))}</select></p>
+          <p>District <select name="district" id="district">${opts(Object.keys(ZONES.Chennai))}</select></p>
+          <p>SRO <select name="sro" id="sro">${opts(ZONES.Chennai["North Chennai"])}</select></p>
+          <p>Village <input name="village" id="village" value="${f.village ?? "Thiruvottiyur"}"></p>
+          <p>Survey no <input name="survey" id="survey" value="${f.survey ?? ""}"> &nbsp; Subdiv <input name="subdiv" id="subdiv" value="${f.subdiv ?? "1"}"></p>
+          <p>Date from <input name="from" id="from" value="${f.from ?? "01/01/2004"}"> &nbsp; to <input name="to" id="to" value="${f.to ?? "31/12/2024"}"></p>
+          <p>Type the code shown<br>${captchaSvg(sess.captcha)}<br>
+             <input name="captcha" id="ec-captcha">
+             <span id="captcha-answer" style="position:absolute;left:-9999px">${sess.captcha}</span></p>
+          <button id="ec-submit">Search</button>
+        </form>`));
+    }
+
     if ((f.captcha ?? "").toUpperCase() !== sess.captcha) return send(page("EC", `<p id="err">Wrong CAPTCHA.</p>`), 401);
 
     // survey starting "OLD" -> pre-1987 record served as a scanned image
