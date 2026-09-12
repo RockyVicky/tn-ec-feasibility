@@ -376,17 +376,21 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
         }
       };
       page.on("response", onResponse);
+      // Confirmed live the checkCaptcha validation itself succeeds ("##true")
+      // every time, with nothing visible happening afterward regardless of
+      // timing (a blur-then-pause fix made no difference) — so it's neither a
+      // wrong/expired CAPTCHA nor a race condition. Next candidate: the site's
+      // own success-callback throwing a JS error partway through, silently,
+      // with no on-page indication. Capture console output and page errors
+      // for this same window to check directly instead of guessing again.
+      const seenConsoleErrors: string[] = [];
+      const onConsole = (msg: import("playwright").ConsoleMessage) => {
+        if (msg.type() === "error") seenConsoleErrors.push(msg.text());
+      };
+      const onPageError = (err: Error) => seenConsoleErrors.push(`pageerror: ${err.message}`);
+      page.on("console", onConsole);
+      page.on("pageerror", onPageError);
 
-      // Confirmed live: the checkCaptcha validation itself succeeds ("##true")
-      // — so this isn't a wrong/expired CAPTCHA. The real problem looks like a
-      // race: clicking Search right after filling the field doesn't give that
-      // async validation time to land before the click's own handler runs. A
-      // human always has a natural pause between typing and clicking that a
-      // script filling + clicking in one motion doesn't. Explicitly blur the
-      // field to fire the check, then give it a moment — a fixed pause rather
-      // than waiting on the response itself, since the mock portal never fires
-      // this request at all and a response-wait would just burn its timeout
-      // every time.
       await page.locator("#txt_Captcha, #ec-captcha").first().blur().catch(() => {});
       await page.waitForTimeout(1200);
 
@@ -396,10 +400,15 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       // unchanged homepage and reported a false "no records found". Now that
       // clickFirst honestly reports failure, treat it as a real failure too,
       // rather than pressing on to scrape whatever's on screen.
-      if (!searchClicked) {
-        burst?.stop();
+      const offAll = () => {
         page.off("request", onRequest);
         page.off("response", onResponse);
+        page.off("console", onConsole);
+        page.off("pageerror", onPageError);
+      };
+      if (!searchClicked) {
+        burst?.stop();
+        offAll();
         throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
       }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
@@ -409,8 +418,7 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       // Give it a full 30s to actually settle before deciding nothing happened
       // — confirmed live that a 3-4s window wasn't enough to say either way.
       if (burst) { await page.waitForTimeout(30000).catch(() => {}); burst.stop(); await burst.done; }
-      page.off("request", onRequest);
-      page.off("response", onResponse);
+      offAll();
       ctx.log("automation.debug", { step: "captcha_check_response", attempt, responses: seenResponses });
       ctx.log("automation.debug", {
         step: "post_click_network_activity",
@@ -418,6 +426,7 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
         requestCount: seenRequests.length,
         requests: seenRequests.slice(0, 20),
       });
+      ctx.log("automation.debug", { step: "post_click_console_errors", attempt, errors: seenConsoleErrors });
 
       if (!/please enter valid captcha/i.test(postClickText)) break; // accepted (or some other outcome) — stop retrying
       ctx.log("automation.captcha_rejected", { attempt, maxAttempts: MAX_CAPTCHA_ATTEMPTS });
