@@ -377,6 +377,19 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       };
       page.on("response", onResponse);
 
+      // Confirmed live: the checkCaptcha validation itself succeeds ("##true")
+      // — so this isn't a wrong/expired CAPTCHA. The real problem looks like a
+      // race: clicking Search right after filling the field doesn't give that
+      // async validation time to land before the click's own handler runs. A
+      // human always has a natural pause between typing and clicking that a
+      // script filling + clicking in one motion doesn't. Explicitly blur the
+      // field to fire the check, then give it a moment — a fixed pause rather
+      // than waiting on the response itself, since the mock portal never fires
+      // this request at all and a response-wait would just burn its timeout
+      // every time.
+      await page.locator("#txt_Captcha, #ec-captcha").first().blur().catch(() => {});
+      await page.waitForTimeout(1200);
+
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
       // Confirmed live: a reappeared promo modal silently ate this exact click —
       // clickFirst used to report success regardless, so the worker scraped the
