@@ -4,6 +4,7 @@ poc/artifacts/
 service/dist/
 service/.env
 verification/india-run/
+submission/cover-email.md
 *.log
 .env
 .env.*
