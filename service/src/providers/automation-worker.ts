@@ -133,6 +133,65 @@ async function clickFirst(page: import("playwright").Page, selectors: string[]):
 }
 
 /**
+ * Confirmed live, the hard way, after a lengthy investigation: the EC Start/End
+ * Date fields are bound to a JS calendar widget that page.fill() does not
+ * actually update — it can open the picker (side effect of focusing the field)
+ * but the real portal reads the fields as still empty afterward, which is what
+ * was silently failing the site's own mandatory-field check on every run.
+ * Drives the actual picker instead: click the field, click "Today" if that's
+ * the target date, otherwise step month-by-month via the picker's own
+ * Prev/Next controls (the one navigation every version of this kind of widget
+ * reliably supports) until the header shows the target month/year, then click
+ * the target day cell. No-ops harmlessly if the field doesn't exist (the mock
+ * portal's plain #from/#to inputs), since count() short-circuits before any
+ * of this runs.
+ */
+async function pickDate(page: import("playwright").Page, fieldSelector: string, iso: string): Promise<void> {
+  const field = page.locator(fieldSelector).first();
+  if (!(await field.count().catch(() => 0))) return;
+
+  await field.click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (iso === todayIso) {
+    const todayBtn = page.getByText("Today", { exact: true }).first();
+    if (await todayBtn.count().catch(() => 0)) {
+      await todayBtn.click({ timeout: 3000 }).catch(() => {});
+      return;
+    }
+  }
+
+  const target = new Date(`${iso}T00:00:00Z`);
+  const targetMonthIdx = target.getUTCMonth();
+  const targetYear = target.getUTCFullYear();
+  const targetDay = target.getUTCDate();
+  const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  const headerLoc = page.locator("text=/^[A-Za-z]+\\s+\\d{4}$/").first();
+
+  for (let i = 0; i < 240; i++) { // safety cap: 20 years of month-steps
+    const headerText = (await headerLoc.textContent().catch(() => null))?.trim() ?? "";
+    const m = headerText.match(/^([A-Za-z]+)\s+(\d{4})$/);
+    if (!m) break;
+    const shownWord = (m[1] ?? "").toLowerCase();
+    const shownYear = Number(m[2] ?? "0");
+    // The widget's own header text is truncated ("Septembe" for September,
+    // confirmed live) — match by whichever prefix relationship holds.
+    const shownMonthIdx = monthNames.findIndex((name) => name.startsWith(shownWord) || shownWord.startsWith(name.slice(0, shownWord.length)));
+    if (shownYear === targetYear && shownMonthIdx === targetMonthIdx) break;
+    const shownTotal = shownYear * 12 + shownMonthIdx;
+    const targetTotal = targetYear * 12 + targetMonthIdx;
+    const navBtn = targetTotal < shownTotal ? page.getByText("Prev", { exact: true }).first() : page.getByText("Next", { exact: true }).first();
+    if (!(await navBtn.count().catch(() => 0))) break;
+    await navBtn.click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(150);
+  }
+
+  const dayCell = page.locator("td", { hasText: new RegExp(`^${targetDay}$`) }).first();
+  await dayCell.click({ timeout: 3000 }).catch(() => {});
+}
+
+/**
  * Playwright's own video recorder proved unreliable for the specific moment
  * right around clicking Search — twice, with two different fix attempts, it
  * cut off before showing the click's effect (confirmed by a direct
@@ -325,13 +384,21 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     const addClicked = await clickFirst(page, ["#btn_AddSurvey"]);
     if (addClicked) await page.waitForTimeout(500); // real-portal-only step; no-op on the mock
     ctx.log("automation.debug", { step: "add_survey", clicked: addClicked, captchaImgPresent: await page.locator("#captcha, #txt_Captcha ~ img, #ec-captcha ~ img").count().catch(() => 0) });
-    // NOTE: only proven live via the real date-picker widget (click field -> click
-    // month/year header -> click day), not via fill(). fill() is tried here as the
-    // simpler first attempt and is confirmed to work against the mock; if a live
-    // run shows the real portal's date fields silently ignoring it, swap this for
-    // picker clicks using the sequence above.
-    await fillFirst(page, ["#txt_PeriodStartDt", "#from"], isoToDmy(req.period.from));
-    await fillFirst(page, ["#txt_PeriodEndDt", "#to"], isoToDmy(req.period.to));
+    // Confirmed live: page.fill() opens the picker widget but never actually
+    // sets a value the real portal's own validation reads as non-empty — this
+    // was the true, silent cause of every "nothing happens after Search"
+    // result tonight, not a CAPTCHA or click problem at all. Drive the actual
+    // picker on the real portal; fill() is kept for the mock's plain inputs.
+    if (await page.locator("#txt_PeriodStartDt").count().catch(() => 0)) {
+      await pickDate(page, "#txt_PeriodStartDt", req.period.from);
+    } else {
+      await fillFirst(page, ["#from"], isoToDmy(req.period.from));
+    }
+    if (await page.locator("#txt_PeriodEndDt").count().catch(() => 0)) {
+      await pickDate(page, "#txt_PeriodEndDt", req.period.to);
+    } else {
+      await fillFirst(page, ["#to"], isoToDmy(req.period.to));
+    }
 
     // 3. search CAPTCHA — retried with a *fresh* screenshot if the site rejects
     // the answer. Confirmed live: a real-world CAPTCHA here can expire between
