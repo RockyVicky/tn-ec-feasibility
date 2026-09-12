@@ -350,10 +350,21 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
 
       // Start the screenshot-burst right as we're about to click — see
       // startBurstCapture's doc comment for why this replaces Playwright's own
-      // video recorder for this specific moment.
+      // video recorder for this specific moment. Also listen for any network
+      // activity to the portal's own host during this window, to answer the
+      // open question directly: does clicking Search fire a request at all?
       const burstDir = cfg.recordVideoDir ? path.join(cfg.recordVideoDir, `click-burst-attempt${attempt}`) : null;
       if (burstDir) await mkdir(burstDir, { recursive: true }).catch(() => {});
-      const burst = burstDir ? startBurstCapture(page, burstDir) : null;
+      const burst = burstDir ? startBurstCapture(page, burstDir, 300, 40000) : null;
+
+      const portalHost = new URL(base).host;
+      const seenRequests: string[] = [];
+      const onRequest = (req: import("playwright").Request) => {
+        try {
+          if (new URL(req.url()).host === portalHost) seenRequests.push(`${req.method()} ${req.url()}`);
+        } catch { /* ignore unparseable urls */ }
+      };
+      page.on("request", onRequest);
 
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
       // Confirmed live: a reappeared promo modal silently ate this exact click —
@@ -363,15 +374,23 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       // rather than pressing on to scrape whatever's on screen.
       if (!searchClicked) {
         burst?.stop();
+        page.off("request", onRequest);
         throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
       }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
       await page.waitForTimeout(800);
       postClickText = await page.locator("body").innerText().catch(() => "");
       ctx.log("automation.debug", { step: "post_search_click", attempt, searchClicked, url: page.url(), bodyTextSample: postClickText.slice(0, 400) });
-      // Keep capturing a little longer after the read above, in case the page
-      // is still settling, then stop and let the burst loop's last iteration finish.
-      if (burst) { await page.waitForTimeout(3000).catch(() => {}); burst.stop(); await burst.done; }
+      // Give it a full 30s to actually settle before deciding nothing happened
+      // — confirmed live that a 3-4s window wasn't enough to say either way.
+      if (burst) { await page.waitForTimeout(30000).catch(() => {}); burst.stop(); await burst.done; }
+      page.off("request", onRequest);
+      ctx.log("automation.debug", {
+        step: "post_click_network_activity",
+        attempt,
+        requestCount: seenRequests.length,
+        requests: seenRequests.slice(0, 20),
+      });
 
       if (!/please enter valid captcha/i.test(postClickText)) break; // accepted (or some other outcome) — stop retrying
       ctx.log("automation.captcha_rejected", { attempt, maxAttempts: MAX_CAPTCHA_ATTEMPTS });
