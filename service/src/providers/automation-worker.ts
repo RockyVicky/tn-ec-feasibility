@@ -340,6 +340,14 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     if (/Registration of Document/i.test(postClickText) && /Token Availability/i.test(postClickText)) {
       throw new ProviderError("portal_unavailable", "search submitted but landed back on the homepage, not a results page", true);
     }
+    // When recording, settle here — right after the click, before any of our
+    // own screenshot()/content() calls below compete with the video encoder
+    // for the same CDP pipe. Confirmed live: placing this settle wait *after*
+    // the scrape step instead (right before returning) consistently produced
+    // a recording that cut off at "answer filled in, not yet submitted" even
+    // though the click and scrape had both already succeeded — the dwell time
+    // existed, just in the wrong place to actually get captured.
+    if (cfg.recordVideoDir) await page.waitForTimeout(2500).catch(() => {});
 
     // 4. optional OTP
     if (await page.locator("#otp-input").count()) {
@@ -377,12 +385,6 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     }
 
     const { outcome, encumbrancePresent, caveats } = deriveOutcome({ entries, periodFrom: req.period.from, nilHumanVerified: false, extraCaveats });
-
-    // When recording, give the video encoder a moment to actually flush the
-    // final frames (the Search click + results page) before context.close()
-    // finalizes the file — confirmed live: without this, the recording cut off
-    // right at the pre-click state even though the search itself succeeded.
-    if (cfg.recordVideoDir) await page.waitForTimeout(1500).catch(() => {});
 
     return {
       schemaVersion: "1.0",
