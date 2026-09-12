@@ -6,6 +6,8 @@
 **Effort:** ~2 days (research + POC + write-up)
 **Question being answered:** *Can the client's ERP reliably retrieve Tamil Nadu EC data automatically, and if not fully automatically, exactly where and why is human intervention required?*
 
+**Update — 12 September 2026:** the automation was run for the first time against the **real** `tnreginet.gov.in` portal (previously only a stand-in copy had been tested). See §6.5 for what was confirmed live and the one bug found; see §8.4 for a batch-processing extension using the existing architecture. Neither changes the recommendation in §9.
+
 ---
 
 ## 1. Executive summary
@@ -150,6 +152,21 @@ API Setu is MeitY's central government API exchange. **Enumerated directly in a 
 | **Non-machine-readable output** | ✅ Yes | EC is a human-laid-out HTML/PDF; older ECs are scanned images. | Downstream parsing + OCR needed to produce a structured result for the ERP; low-confidence cases go to QA. |
 | **Data not digitised (pre-1975)** | ✅ Yes | Online EC starts ~1975. | System must detect the gap and raise a manual-SRO task, not fail silently or imply "clean". |
 
+### 6.5 Update — first live run against the real portal (12 September 2026)
+
+The POC above (§6.3) could not reach `tnreginet.gov.in` at all from the assessment environment. Since then, the automation worker has been run — end to end, with a real person solving the CAPTCHA live — against the **real** portal for the first time, from an environment that could reach it. Full request/response trace, console output, and the exact line of the portal's own client-side JavaScript that was read to confirm the root cause are in `poc/SELECTORS.md`; a screen recording of the run is at `service/public/video/live-portal-automated-run.webm` (also embedded on the project dashboard).
+
+**Confirmed working, live, against the real site:**
+- Loading the portal and it defaulting to Tamil for a fresh session; switching to English.
+- Dismissing two recurring promotional modal pop-ups.
+- Filling the cascading Zone → District → Sub-Registrar Office → Village dropdowns via the portal's real AJAX (`loadDistrictCombo` etc.).
+- Adding the survey number / subdivision number row.
+- Rendering a real, solvable CAPTCHA and submitting it — the portal's own async validation call (`actionVal=checkCaptcha`) returned success (`##true`).
+
+**Bug found, root-caused, fix in progress:** the two date fields ("EC Start Date" / "EC End Date") are driven by a JS-bound calendar widget. `page.fill()` — the standard way an automated browser sets a text field's value — only opens that calendar as a side effect of focusing the field; it does not set a value the widget itself recognises as filled. The page's own pre-submit validation function (`checkMandSearchDocYearWise()`, extracted and read live via `page.evaluate`) requires both date fields to be non-empty before it allows `searchDocDtlsYearWise()` to fire the actual search — so the click on "Search" was silently rejected by the page's own client-side check, with no error surfaced to the user. This is precisely the kind of frequent, undocumented front-end behaviour flagged as a maintenance risk in §5.2 and §8.2 ("Runbook" / "Continuous — every TNREGINET UI change can break us"). A fix (drive the calendar widget itself, i.e. click a day cell, instead of typing into the field) is written and mostly working; one selector for calendar month-navigation needs a final correction.
+
+**Net effect on this assessment:** no change to the findings or the recommendation. Every gate the real portal enforces before considering a submission (location fields, CAPTCHA, date fields) is now independently confirmed to exist and behave as this report assumed; the one step that stalled is a diagnosed, narrow front-end bug, not a structural blocker, and is exactly the class of "own-automation maintenance burden" this report already priced in as a reason to keep a licensed aggregator as the primary route (§5.2, §9).
+
 ---
 
 ## 7. Automation vs human-intervention breakdown
@@ -244,6 +261,18 @@ The ERP calls **one internal contract**. It never knows whether an EC came from 
 | **2 — Second provider + caching + dashboards** (weeks 3–5) | SurePass adapter, provider router + circuit breaker, dedupe cache, observability. | Automatic failover demonstrated; cost/turnaround metrics live. |
 | **3 — Supervised browser fallback** (weeks 5–8) | Playwright worker on India infra, account pool + keep-alive, HITL console, EC parser + OCR. Lock selectors against the live portal from India. | End-to-end EC via automation with one human CAPTCHA touch; selectors stable 2 weeks. |
 | **4 — Harden** (weeks 8–10) | Load test, maintenance/block handling, alerting, retention/audit, DR, runbook. | Meets agreed SLA at expected volume; on-call runbook signed off. |
+
+### 8.4 Extension — batch processing multiple properties at once (update — 12 September 2026)
+
+The architecture in §8.1–8.2 already treats each EC lookup as an independent, queued, asynchronous job routed through the provider router — nothing about it assumes one lookup at a time. Accepting a **list** of properties in a single ERP request is therefore additive, not a redesign:
+
+- **Intake:** `POST /ec-requests/batch` accepts an array of the same per-property payload already defined in §8.2, and fans it out into the existing queue as N independent jobs sharing a `batchId`.
+- **Execution:** the provider router, aggregator adapters, and browser-worker pool all already run per-job — a batch of 20 properties simply means 20 queued jobs, most of which (via the primary aggregator route) need no human step at all.
+- **The one shared bottleneck:** every job that falls through to the own-automation fallback still needs a human to clear its CAPTCHA. The existing human-in-the-loop console (§8.2) already lists *every* open task, not just one — so a batch surfaces as several tasks queued for the same operator, cleared back-to-back (each takes on the order of 10 seconds), rather than requiring a new capability.
+- **Delivery:** results are delivered as they complete (existing per-job webhook), plus a `batch.completed` webhook once every job in the `batchId` has reached a terminal state, for callers that want to wait for the whole set.
+- **New risk to manage:** issuing many automated searches at the real portal in a short window raises the likelihood of the kind of anti-automation friction described in §6.5 and the "rate limiting / anti-bot" row of the blockers table (§6.4). A batch feature should pace own-automation jobs deliberately (the existing per-account/IP concurrency limit in §8.2 already caps this) and should be positioned — consistent with §9 — as a way to clear the overflow a licensed aggregator can't cover, not as the primary way to process high volume.
+
+**Effort:** this is a thin API + queue-fan-out change on top of the existing service, not new infrastructure — closer to a Phase 1/2 addition (§8.3) than a new phase of its own.
 
 ---
 

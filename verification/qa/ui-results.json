@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-12T13:41:16.977Z",
+  "at": "2026-09-12T14:50:08.060Z",
   "pass": 17,
   "fail": 0,
   "results": [
@@ -7,31 +7,31 @@
       "id": "D1",
       "desc": "dashboard loads with correct title",
       "status": "PASS",
-      "ms": 7
+      "ms": 6
     },
     {
       "id": "D2",
-      "desc": "all five h2 sections present",
+      "desc": "all core h2 sections present",
       "status": "PASS",
-      "ms": 25
+      "ms": 23
     },
     {
       "id": "D3",
-      "desc": "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
+      "desc": "architecture diagram + frameworks table + testing numbers, no detailed TC cards",
       "status": "PASS",
-      "ms": 124
+      "ms": 25
     },
     {
       "id": "D4",
       "desc": "decisions table lists D1..D8",
       "status": "PASS",
-      "ms": 5
+      "ms": 4
     },
     {
       "id": "D5",
       "desc": "no 'SIGNED OFF' badge used for AI-only verification",
       "status": "PASS",
-      "ms": 4
+      "ms": 3
     },
     {
       "id": "D6",
@@ -43,61 +43,61 @@
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 1000
+      "ms": 1178
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 968
+      "ms": 1137
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 1173
+      "ms": 1030
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 599
+      "ms": 814
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 551
+      "ms": 540
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 574
+      "ms": 555
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 5022
+      "ms": 5002
     },
     {
       "id": "C3b",
       "desc": "CAPTCHA input keeps focus and typed text across the 5s auto-refresh",
       "status": "PASS",
-      "ms": 5687
+      "ms": 5670
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 133
+      "ms": 112
     },
     {
       "id": "C5",
       "desc": "console links to the project dashboard",
       "status": "PASS",
-      "ms": 4
+      "ms": 3
     },
     {
       "id": "C6",

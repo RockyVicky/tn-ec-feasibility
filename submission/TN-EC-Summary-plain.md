@@ -48,6 +48,26 @@ gives back a clear answer, including correctly recognising when it *doesn't*
 know something for certain, instead of guessing. A short recording of this
 running live is included alongside this summary.
 
+## Update - the first real run against the live government website (12 September 2026)
+
+Everything above was tested against a stand-in copy of the government site that behaves the same way. On 12 September 2026, for the first time, we ran the automated version against the **real** `tnreginet.gov.in` website, with a real person solving the CAPTCHA live, and filmed it.
+
+**What we saw:** the robot opened the real site, switched it to English, closed two pop-up ads, filled in the property's location step by step, added the survey number, and showed a real CAPTCHA that a person solved correctly. Up to that point, everything worked exactly as designed. Then, when it tried to search, nothing happened - no result, and no error message either.
+
+**What we found out, after digging in:** the two date boxes on the real form ("EC Start Date" and "EC End Date") use a small pop-up calendar. Our program was clicking into the boxes correctly, but wasn't finishing the click the exact way a person does when picking a day off that calendar - so the website quietly still saw both boxes as empty. The website's own rule is "don't search unless every box is filled," so it simply stopped, silently. Nothing was broken or crashed; it just never got confirmation the two boxes were filled in properly.
+
+The fix (click the calendar the way a real person's click actually lands, instead of just typing into the box) is already written and is most of the way there; it needs one small correction to finish. This is a normal, expected kind of hiccup when working against a website we don't control and that can quietly change its own behavior - not a sign the overall approach doesn't work.
+
+**Does this change the recommendation? No - if anything it confirms it.** Every step worked except this one, already-diagnosed step, and it's exactly why the plan above treats our own automation as a **backup**, not the main route. A paid provider stays the fastest, lowest-risk path for volume; our own automation is the fallback for what a provider can't cover, and it will occasionally need a small tune-up like this one - the same as any integration with a website you don't own.
+
+## Idea - looking up many properties at once
+
+The system was already designed to handle more than one request at a time, so this isn't a rebuild - it's turning on something the design already supports.
+
+In plain terms: hand the system a whole list of properties (say, 20) instead of one. It works through all of them itself - opening the site, filling in each form, reading each result - and only pauses, per property, for the one step that always needs a person: solving that property's CAPTCHA, which takes about 10 seconds. One person clearing CAPTCHAs back-to-back for 20 properties is a few minutes of work; everything else happens in the background at the same time. When every property is done, all 20 results are delivered back together.
+
+**One caution:** sending a large batch of automated searches at the real government site in a short window risks the same kind of trouble described above - a site that starts behaving oddly under automated traffic. A batch feature should pace itself deliberately, and - matching the recommendation above - is best used for the overflow a paid provider can't handle, not as the main way to process high volume.
+
 ## The one thing that will never be fully automatic
 
 Government websites protect against automated access with a **CAPTCHA** - the

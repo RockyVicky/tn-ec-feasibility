@@ -67,32 +67,30 @@ async function run() {
   await check("D1", "dashboard loads with correct title", async () => {
     eq(await dpage.title(), "TN EC Integration — Project Dashboard", "title");
   });
-  await check("D2", "all five h2 sections present", async () => {
+  await check("D2", "all core h2 sections present", async () => {
     const h2 = await dpage.$$eval("h2", (els) => els.map((e) => e.textContent.trim()));
-    for (const s of ["Where things stand", "What's built so far", "Manual test cases", "Decisions we need from the client", "Next actions"]) {
+    for (const s of ["Where things stand", "What's built so far", "How it's built", "Testing", "Decisions we need from the client", "Next actions"]) {
       assert(h2.includes(s), `missing section: ${s}`);
     }
   });
-  await check("D3", "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge", async () => {
+  await check("D3", "architecture diagram + frameworks table + testing numbers, no detailed TC cards", async () => {
     const cards = await dpage.$$(".card");
-    eq(cards.length, 8, "card count");
-    for (let i = 0; i < cards.length; i++) {
-      const steps = await cards[i].$$eval("ol.steps li", (l) => l.length);
-      assert(steps >= 2, `card ${i + 1} has numbered steps`);
-      assert(await cards[i].$(".expect"), `card ${i + 1} has a 'what you should see' box`);
-      const boxes = await cards[i].$$eval(".result .box", (b) => b.map((x) => x.textContent.trim()));
-      assert(boxes.includes("PASS") && boxes.includes("FAIL"), `card ${i + 1} has PASS/FAIL boxes`);
-      const badge = await cards[i].$$eval(".badge", (b) => b.map((x) => x.textContent.trim()));
-      assert(badge.includes("AI VERIFIED"), `card ${i + 1} has AI VERIFIED badge`);
-    }
+    eq(cards.length, 0, "detailed test-case cards should be removed in favor of summary numbers");
+    const svgCount = await dpage.$$eval("svg", (els) => els.length);
+    assert(svgCount >= 3, "expected the live-run, batch-idea, and architecture diagrams (>=3 svgs)");
+    const tableHeaders = await dpage.$$eval("table tr:first-child th", (els) => els.map((e) => e.textContent.trim()));
+    assert(tableHeaders.includes("Tool") && tableHeaders.includes("Category"), "frameworks table with Tool/Category columns present");
+    const stats = await dpage.$$eval(".grid .stat .k", (els) => els.map((e) => e.textContent.trim()));
+    assert(stats.includes("Manual test cases"), "testing section shows a manual-test-cases number stat");
   });
   await check("D4", "decisions table lists D1..D8", async () => {
     const rows = await dpage.$$eval("table tr td:first-child", (t) => t.map((x) => x.textContent.trim()));
     for (let n = 1; n <= 8; n++) assert(rows.includes(`D${n}`), `missing D${n}`);
   });
   await check("D5", "no 'SIGNED OFF' badge used for AI-only verification", async () => {
-    const badges = await dpage.$$eval(".card .badge", (b) => b.map((x) => x.textContent.trim()));
-    assert(!badges.includes("SIGNED OFF"), "AI-verified cards must not claim SIGNED OFF");
+    // Exclude the status-legend paragraph, which explains what SIGNED OFF means rather than claiming it.
+    const badges = await dpage.$$eval(".badge", (b) => b.filter((x) => !x.closest(".note")).map((x) => x.textContent.trim()));
+    assert(!badges.includes("SIGNED OFF"), "AI-verified stats/sections must not claim SIGNED OFF");
   });
   await check("D6", "no console/page errors on load", async () => {
     assert(dErrors.length === 0, `console errors: ${dErrors.join(" | ")}`);
