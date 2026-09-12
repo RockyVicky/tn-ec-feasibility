@@ -1,5 +1,5 @@
 {
-  "at": "2026-09-11T20:17:53.179Z",
+  "at": "2026-09-12T07:48:52.406Z",
   "pass": 16,
   "fail": 0,
   "results": [
@@ -7,7 +7,7 @@
       "id": "D1",
       "desc": "dashboard loads with correct title",
       "status": "PASS",
-      "ms": 6
+      "ms": 7
     },
     {
       "id": "D2",
@@ -19,79 +19,79 @@
       "id": "D3",
       "desc": "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 129
+      "ms": 168
     },
     {
       "id": "D4",
       "desc": "decisions table lists D1..D8",
       "status": "PASS",
-      "ms": 3
+      "ms": 4
     },
     {
       "id": "D5",
       "desc": "no 'SIGNED OFF' badge used for AI-only verification",
       "status": "PASS",
-      "ms": 2
+      "ms": 4
     },
     {
       "id": "D6",
       "desc": "no console/page errors on load",
       "status": "PASS",
-      "ms": 1
+      "ms": 0
     },
     {
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 819
+      "ms": 824
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 784
+      "ms": 814
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 702
+      "ms": 814
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 546
+      "ms": 557
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 543
+      "ms": 561
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 556
+      "ms": 561
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 5004
+      "ms": 5035
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 133
+      "ms": 142
     },
     {
       "id": "C5",
       "desc": "console links to the project dashboard",
       "status": "PASS",
-      "ms": 2
+      "ms": 3
     },
     {
       "id": "C6",

@@ -77,3 +77,51 @@ Superseding the "known unknowns" this replaces — these are no longer guesses:
   Password — and only the first is relevant to a locked-account error; the
   latter two additionally require the *exact* mobile number on file (not email),
   in the exact format it was stored in.
+
+## Confirmed live (12 Sep 2026, second session) — full free search cycle, no login
+
+Ran the whole "Search & View EC" flow end to end against the real portal with no
+account at all, and captured the real element ids (now wired into
+`service/src/providers/automation-worker.ts` as the primary selectors, mock-portal
+ids kept as fallbacks so both keep working):
+
+- **No stable URL for this screen.** The homepage link "Search/View EC" (footer,
+  under Online Services) drives a client-side AJAX swap — the address bar keeps
+  showing the homepage's `actionVal=homePage` throughout. `page.goto()` to a
+  guessed URL doesn't work; you have to click the link.
+- **Real element ids, all human-readable** (not JSF-mangled as feared):
+  `#cmb_Zone`, `#cmb_District`, `#cmb_SroName`, `#cmb_Village` (selects, cascading
+  — see below), `#txt_SurveyNo`, `#txt_SubDivisionNo` (plain inputs),
+  `#txt_PeriodStartDt` / `#txt_PeriodEndDt` (date inputs), `#btn_AddSurvey`,
+  `#btn_SearchDoc`, `#btn_ResetForm`, `#txt_Captcha` (input), `#captcha` (the
+  actual `<img>` — matches the automation worker's existing generic
+  `img[id*="captcha" i]` fallback with no code change needed there).
+- **Zone -> District -> SRO -> Village is a real cascading AJAX chain** (each
+  fires a `POST .../loadDistrictCombo?...&comboValue=<parentValue>` and the
+  child `<select>` only gets its options ~1s later). A tool that sets a select's
+  value without dispatching a real change event won't trigger it — worth knowing
+  if a future automation approach isn't Playwright's own `selectOption`.
+- **Survey No. and Subdivision No. are separate fields that reject a combined
+  value.** Typing the old deed's `11/1A1` into one box fails silently
+  ("Only numbers are allowed") — it has to be split into Survey No. `11` +
+  Subdivision No. `1A1`. Confirms and sharpens last session's finding about old
+  survey numbers not matching current sub-division numbering.
+- **The CAPTCHA doesn't exist until you click "Add"** to register the survey
+  detail as a row (the form supports adding several rows — the multi-sub-division
+  search the earlier note recommended). Screenshotting for CAPTCHA before this
+  point captures whatever else is on the page, not a CAPTCHA — this is exactly
+  what produced an unreadable/wrong image in the very first live automation
+  attempt tonight, since the worker's assumed `/portal/ec-search` URL doesn't
+  exist on the real portal and it silently continued on the wrong page.
+- **Date fields didn't accept plain typed input** in manual testing (value stuck
+  only after using the built-in calendar widget: click the field, click the
+  month/year header to jump to a month directly, click the day) — unconfirmed
+  whether Playwright's `page.fill()` behaves differently (it often does, being a
+  lower-level input mechanism than synthetic keystrokes); the worker tries
+  `fill()` first and this needs a live check.
+- **A real, successful, login-free cycle completed**: Zone=Salem,
+  District=Salem West, SRO=Omalur, Village=Kullamanaickenpatti, Survey 11 / Sub
+  1A1, a 10-day date window, real CAPTCHA solved by a human operator, real
+  result: "No Documents registered during the Search Period." (a true nil result
+  for that narrow window, not a bug) — proving the whole chain works end to end
+  when pointed at the real ids.

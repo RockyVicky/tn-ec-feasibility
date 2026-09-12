@@ -82,13 +82,45 @@ async function mockAnswer(page: import("playwright").Page): Promise<string | und
   return page.locator("#captcha-answer").first().textContent({ timeout: 200 }).catch(() => null).then((t) => t?.trim() || undefined);
 }
 
-async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContext, inputSel: string): Promise<void> {
+/**
+ * Try each candidate selector in order (real-portal id first, mock-portal id as
+ * fallback) and act on the first one present. Both portals get a mix of <select>
+ * and plain <input> for the "same" field (e.g. village is a cascading dropdown on
+ * the real portal but a free-text field on the mock), so this always attempts
+ * selectOption-by-label first and falls back to fill — exactly the pattern already
+ * proven for zone/district/sro before this helper existed.
+ */
+async function fillFirst(page: import("playwright").Page, selectors: string[], value: string): Promise<boolean> {
+  for (const sel of selectors) {
+    if (await page.locator(sel).count().catch(() => 0)) {
+      await page.selectOption(sel, { label: value }).catch(() => page.fill(sel, value).catch(() => {}));
+      return true;
+    }
+  }
+  return false;
+}
+
+async function clickFirst(page: import("playwright").Page, selectors: string[]): Promise<boolean> {
+  for (const sel of selectors) {
+    const el = page.locator(sel).first();
+    if (await el.count().catch(() => 0)) {
+      await el.click({ timeout: 3000 }).catch(() => {});
+      return true;
+    }
+  }
+  return false;
+}
+
+async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContext, inputSelectors: string[]): Promise<void> {
+  // Only one of these ever exists on a given portal, so joining into one CSS
+  // selector resolves to exactly the right single element either way.
+  const inputSel = inputSelectors.join(", ");
   // Screenshot just the CAPTCHA image itself when we can find one near the answer
   // box — smaller and clearer for the operator than a full-page capture. Common
   // patterns: an <img> right next to/before the answer input, or one whose id/src
   // hints at "captcha". Falls back to the full page if none of that matches.
   const imgCandidates = [
-    `${inputSel} ~ img`,
+    ...inputSelectors.map((sel) => `${sel} ~ img`),
     `img[id*="captcha" i]`,
     `img[src*="captcha" i]`,
     `img[alt*="captcha" i]`,
@@ -133,32 +165,66 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       }
       await page.fill("#username", cfg.username ?? "worker");
       await page.fill("#password", cfg.password ?? "worker");
-      await solveCaptcha(page, ctx, "#captcha");
+      await solveCaptcha(page, ctx, ["#captcha"]);
       await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}), page.click("#login-submit")]);
       ctx.log("automation.logged_in");
     }
 
     // 2. EC search form
-    if (!(await page.locator("#ec-submit").count())) {
-      await page.goto(`${base}/portal/ec-search`, { waitUntil: "domcontentloaded" });
+    // Confirmed live (12 Sep 2026): the real portal's search screen isn't a
+    // separately loadable URL — it's a client-side AJAX swap of the homepage
+    // (the address bar keeps showing actionVal=homePage throughout). It's reached
+    // only by clicking the actual "Search/View EC" link. The mock portal, by
+    // contrast, *is* a real separate page at /portal/ec-search — try the direct
+    // URL there, and fall back to the real portal's click-through otherwise.
+    const hasSearchForm = async () => (await page.locator("#ec-submit, #btn_SearchDoc").count()) > 0;
+    if (!(await hasSearchForm())) {
+      const searchLink = page.getByRole("link", { name: /search\s*\/?\s*view\s*ec/i });
+      if (await searchLink.count().catch(() => 0)) {
+        await dismissPromoModal(page);
+        await searchLink.first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(800);
+      }
+      if (!(await hasSearchForm())) {
+        await page.goto(`${base}/portal/ec-search`, { waitUntil: "domcontentloaded" }).catch(() => {});
+      }
       await dismissPromoModal(page);
     }
+
     const p = req.property;
-    for (const [sel, val] of [
-      ["#zone", p.zone], ["#district", p.district], ["#sro", p.sroCode],
-    ] as const) {
-      if (await page.locator(sel).count()) await page.selectOption(sel, { label: String(val) }).catch(() => page.fill(sel, String(val)).catch(() => {}));
+    // Zone -> District -> SRO -> Village cascade via AJAX on the real portal
+    // (confirmed live: each combo's options only populate ~1s after its parent
+    // fires) — the pause between selects is required there, harmless on the mock.
+    await fillFirst(page, ["#cmb_Zone", "#zone"], p.zone);
+    await page.waitForTimeout(800);
+    await fillFirst(page, ["#cmb_District", "#district"], p.district);
+    await page.waitForTimeout(800);
+    await fillFirst(page, ["#cmb_SroName", "#sro"], p.sroCode);
+    await page.waitForTimeout(800);
+    if (p.village) {
+      await fillFirst(page, ["#cmb_Village", "#village"], p.village);
+      await page.waitForTimeout(500);
     }
-    for (const [sel, val] of [
-      ["#village", p.village], ["#survey", p.surveyNumber], ["#subdiv", p.subdivisionNumber],
-      ["#from", isoToDmy(req.period.from)], ["#to", isoToDmy(req.period.to)],
-    ] as const) {
-      if (val != null && (await page.locator(sel).count())) await page.fill(sel, String(val));
-    }
+    // Real portal: survey number and subdivision number are separate fields
+    // (e.g. "11" and "1A1", not the combined "11/1A1" printed on an old deed —
+    // confirmed live) that must be added as a row before the CAPTCHA even renders.
+    if (p.surveyNumber) await fillFirst(page, ["#txt_SurveyNo", "#survey"], p.surveyNumber);
+    if (p.subdivisionNumber) await fillFirst(page, ["#txt_SubDivisionNo", "#subdiv"], p.subdivisionNumber);
+    await clickFirst(page, ["#btn_AddSurvey"]); // real-portal-only step; no-op on the mock
+    // NOTE: only proven live via the real date-picker widget (click field -> click
+    // month/year header -> click day), not via fill(). fill() is tried here as the
+    // simpler first attempt and is confirmed to work against the mock; if a live
+    // run shows the real portal's date fields silently ignoring it, swap this for
+    // picker clicks using the sequence above.
+    await fillFirst(page, ["#txt_PeriodStartDt", "#from"], isoToDmy(req.period.from));
+    await fillFirst(page, ["#txt_PeriodEndDt", "#to"], isoToDmy(req.period.to));
 
     // 3. search CAPTCHA
-    await solveCaptcha(page, ctx, "#ec-captcha");
-    await Promise.all([page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}), page.click("#ec-submit")]);
+    await solveCaptcha(page, ctx, ["#txt_Captcha", "#ec-captcha"]);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+      clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]),
+    ]);
 
     // 4. optional OTP
     if (await page.locator("#otp-input").count()) {
