@@ -235,3 +235,39 @@ an actual results table), rather than trying to enumerate every way a
 rejected/expired submission can look. Left as a known gap rather than guessed
 at further tonight, given how many live hits this portal has already taken in
 one evening.
+
+## Sharper finding (still 12 Sep 2026) — the click may not be visibly doing anything at all
+
+Wanted proof of what the page looks like right after the Search click, for a
+human to review. Video recording turned out unreliable for this specific
+moment — even after moving the settle-wait to fire immediately after the
+click (rather than after the later scrape/parse work), the recorded video
+still consistently cut off at "CAPTCHA answer filled in, Search button still
+showing," never capturing the click's effect. Two separate fix attempts, same
+result — this looks like a real limitation of Playwright's video encoder for
+this fast a transition, not a wait-placement problem.
+
+Stopped fighting the video and instead saved a **direct `page.screenshot()`**
+to disk from deep in the worker's own "scrape" step — taken well after the
+click, the retry-loop's rejection check, a 2.5s settle, and the OTP check.
+That screenshot (not video — no encoder involved) showed **the exact same
+thing**: the pre-submit form, CAPTCHA still filled in, Search button still
+sitting there. Two independent capture methods now agree: as far as we can
+tell, **clicking "Search" does not visibly change the page at all**, within
+any window we've waited.
+
+This reframes the whole night's mystery. It's no longer obviously about a
+CAPTCHA expiring after being screenshotted for the operator — it may be that
+the click on `#btn_SearchDoc` isn't actually triggering a real form
+submission in the first place (wrong element behind an invisible overlay, a
+JS handler that needs a different event sequence than Playwright's synthetic
+click produces, etc.), and everything since — the "Please Enter Valid
+Captcha" text, the homepage-looking reads — may be downstream symptoms of
+that, not separate root causes. **Not confirmed** — next real step, without
+touching the live portal again tonight, is to listen for whether a network
+request actually fires on click (`page.on('request', ...)`) to tell "click
+did nothing" apart from "click worked but the response is genuinely this
+page." Also fixed in the same pass: `rawArtifactRefs` was truncating a base64
+screenshot to 24 characters (the exact same bug class as the CAPTCHA-image
+truncation from the night before) — now a proper reference string, matching
+every other provider's convention.

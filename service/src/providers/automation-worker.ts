@@ -8,6 +8,8 @@
  * a human-in-the-loop task with a screenshot; a real operator answers.
  */
 import { chromium, type Browser } from "playwright";
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { RetrieveContext } from "./types.ts";
 import { ProviderError } from "./types.ts";
 import type { EcRequest } from "../contract.ts";
@@ -365,6 +367,14 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     }
     const now = new Date().toISOString();
     const shot = await page.screenshot();
+    // Reuse recordVideoDir as a general "debug artifacts on" signal — saves the
+    // actual post-submit page as a real file, since video capture has proven
+    // unreliable for this specific fast transition (confirmed live: the click
+    // and its result never showed up in the recorded video, even after moving
+    // the settle wait). A direct screenshot doesn't have that problem.
+    if (cfg.recordVideoDir) {
+      await writeFile(path.join(cfg.recordVideoDir, "post-submit-screenshot.png"), shot).catch(() => {});
+    }
     let entries: import("../canonical.ts").EcEntry[];
     const extraCaveats: import("../canonical.ts").Caveat[] = [];
 
@@ -401,7 +411,12 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
         certified: false,
         retrievedAt: now,
         operatorId: "operator",
-        rawArtifactRefs: [`data:image/png;base64,${shot.toString("base64").slice(0, 24)}…`],
+        // A reference, not an embedded image — matches every other provider's
+        // convention (see automation.ts, mock.ts). The previous version here
+        // truncated a base64 PNG to 24 characters, producing a value that
+        // wasn't a real reference *or* a usable image — same class of bug as
+        // the CAPTCHA-image truncation fixed the night before.
+        rawArtifactRefs: [`automation://post-submit-screenshot/${ctx.requestId}.png`],
       },
       disclaimer: EC_DISCLAIMER,
     };
