@@ -293,3 +293,58 @@ assembled into an actual video) shows **no visible change on screen for the
 full ~4-second window** the burst covered. That's the real, narrower, better-
 evidenced finding to chase next — not "it redirects to the homepage," but
 "the click may not be producing any visible effect at all."
+
+## Root cause found (12 Sep 2026, same night, much later) — and a fix that's close but not correct yet
+
+Chased this all the way down with real evidence at every step rather than
+more guessing:
+
+1. **The click does fire a real network request** — exactly one, to
+   `actionVal=checkCaptcha`, confirmed via `page.on('request', ...)`.
+2. **That request succeeds** — response body is literally `##true`,
+   confirmed by reading the actual response, not inferring from page text.
+3. Two follow-up theories (a timing race with that async check; a silent JS
+   exception in a success callback) were both tested directly and ruled out —
+   zero console/page errors, and a deliberate pause before clicking made no
+   difference.
+4. **Read the Search button's own onclick source directly** rather than guess
+   a fourth theory. It's `searchDocDtlsYearWise()`, an async function whose
+   real search logic only runs past three sequential gates:
+   `checkMandSearchDocYearWise()` → (async) `getVillageDetails()` →
+   `encryptPlotFlat()`. Any one returning falsy makes the function return
+   silently — no error, no request, nothing visible. This is the actual
+   mechanism behind every "nothing happens" result from earlier tonight.
+5. Called each gate directly: `checkMandSearchDocYearWise()` is the one that
+   fails. Reading every individual condition it checks (rather than trusting
+   just the boolean) found it precisely: **`#txt_PeriodStartDt` and
+   `#txt_PeriodEndDt` were empty strings.** Zone/District/SRO, the survey row,
+   Conveyed Extent, and all three `validate*()` calls were fine. The
+   `#cmb_RevenueDistrict`/`#cmb_RevenueTaluka` fields I'd initially suspected
+   from the function's source (added later per a `pragnesh-7896` code comment)
+   turned out not to even exist in this form mode — a dead end, not the cause.
+6. **The actual bug**: `page.fill()` on these two date fields opens the bound
+   calendar widget (a focus side effect) but never sets a value the site's own
+   validation reads as non-empty — exactly the risk flagged, then not followed
+   up on, several hours earlier the same night.
+
+**Fix attempted**: `pickDate()` — click the field, use the picker's "Today"
+button when the target is today, otherwise step month-by-month via the
+picker's own Prev/Next controls until the header shows the target month/year,
+then click the target day cell.
+
+**Live result: partial.** EC Start Date went from empty to `01-Sep-2026`
+(some value now — the day-cell click works) but that's the *wrong* date; the
+target was `01-Jan-2020`, meaning the Prev-button month-stepping loop isn't
+actually navigating — it likely breaks on the very first iteration without
+moving because its header-text locator (`text=/^[A-Za-z]+\s+\d{4}$/`) isn't
+reliably matching the calendar's actual header element. EC End Date (target:
+today) stayed completely empty, meaning the "Today" button click
+(`getByText("Today", { exact: true })`) isn't landing either — quite possibly
+the same class of selector-matching issue.
+
+**Next step, not attempted tonight**: capture the calendar picker's actual
+DOM (class names for the header, the Prev/Next/Today controls, and day
+cells) directly, the same way the button's own onclick source was pulled
+earlier — rather than guess at selectors again. The mechanism (drive the
+picker instead of `fill()`) is now confirmed correct in principle; only the
+specific selectors used to drive it need fixing.
