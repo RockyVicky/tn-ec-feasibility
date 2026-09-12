@@ -365,6 +365,17 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
         } catch { /* ignore unparseable urls */ }
       };
       page.on("request", onRequest);
+      // Also capture the actual response body for the CAPTCHA-check call
+      // itself — confirmed live that clicking Search fires exactly this async
+      // request, so its response is the direct answer to whether the CAPTCHA
+      // was actually accepted, rather than inferring it from page text.
+      const seenResponses: { url: string; status: number; body: string }[] = [];
+      const onResponse = (res: import("playwright").Response) => {
+        if (/actionVal=checkCaptcha/i.test(res.url())) {
+          res.text().then((body) => seenResponses.push({ url: res.url(), status: res.status(), body: body.slice(0, 300) })).catch(() => {});
+        }
+      };
+      page.on("response", onResponse);
 
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
       // Confirmed live: a reappeared promo modal silently ate this exact click —
@@ -375,6 +386,7 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       if (!searchClicked) {
         burst?.stop();
         page.off("request", onRequest);
+        page.off("response", onResponse);
         throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
       }
       await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
@@ -385,6 +397,8 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       // — confirmed live that a 3-4s window wasn't enough to say either way.
       if (burst) { await page.waitForTimeout(30000).catch(() => {}); burst.stop(); await burst.done; }
       page.off("request", onRequest);
+      page.off("response", onResponse);
+      ctx.log("automation.debug", { step: "captcha_check_response", attempt, responses: seenResponses });
       ctx.log("automation.debug", {
         step: "post_click_network_activity",
         attempt,
