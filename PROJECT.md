@@ -73,7 +73,7 @@ Test totals: **50 unit/integration + 31 API + 16 UI + 15 automation-E2E + 13 ERP
 | # | Action | Owner | Output | State |
 |---|---|---|---|---|
 | 1 | Send scope sheet (D1–D8) to client | Raakesh | Filled scope sheet | ⏭️ draft ready: [`docs/client-scope-sheet.md`](docs/client-scope-sheet.md) |
-| 2 | Send RFP to Landeed + SurePass | Raakesh | Sandbox keys + quotes | 📝 draft ready: [`docs/vendor-rfp/`](docs/vendor-rfp/) — needs sender sign-off |
+| 2 | Send RFP to Landeed + SurePass | Raakesh | Sandbox keys + quotes | ✅ sent: [`docs/vendor-rfp/`](docs/vendor-rfp/) — ⏭️ awaiting vendor response |
 | 3 | Request legal review of aggregator + direct-automation routes | Client legal | Go/no-go on Track B fallback | ⏭️ |
 | 4 | Agree internal API contract with ERP team | Raakesh + ERP team | Signed-off `docs/openapi.yaml` | ✅ drafted; ⏭️ ERP review |
 | 5 | Aggregator sandbox spike (pull 1 EC → canonical model) | Raakesh | Working proof, gap list | ⏭️ after #2 — adapter stub in `service/src/providers/landeed.ts` |
