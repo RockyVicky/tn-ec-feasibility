@@ -98,12 +98,33 @@ async function fillFirst(page: import("playwright").Page, selectors: string[], v
   return false;
 }
 
+/**
+ * Confirmed live: a promo modal can reappear well into the flow, not just at
+ * page load — one blocked a click for 30+ seconds during diagnosis. The
+ * previous version of this helper swallowed a failed click and returned true
+ * regardless (it only checked that the element existed, not that the click
+ * landed), which meant a modal silently blocking the final "Search" click was
+ * invisible: the worker pressed on to scrape whatever page was left, producing
+ * a false "no records found" instead of a real result or a real failure. Now
+ * it clears any blocking modal and retries once before honestly reporting
+ * whether the click actually happened.
+ */
 async function clickFirst(page: import("playwright").Page, selectors: string[]): Promise<boolean> {
   for (const sel of selectors) {
     const el = page.locator(sel).first();
     if (await el.count().catch(() => 0)) {
-      await el.click({ timeout: 3000 }).catch(() => {});
-      return true;
+      try {
+        await el.click({ timeout: 5000 });
+        return true;
+      } catch {
+        await dismissPromoModal(page);
+        try {
+          await el.click({ timeout: 5000 });
+          return true;
+        } catch {
+          return false;
+        }
+      }
     }
   }
   return false;
@@ -282,10 +303,24 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
 
     // 3. search CAPTCHA
     await solveCaptcha(page, ctx, ["#txt_Captcha", "#ec-captcha"]);
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
-      clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]),
-    ]);
+    const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
+    // Confirmed live: a reappeared promo modal silently ate this exact click —
+    // clickFirst used to report success regardless, so the worker scraped the
+    // unchanged homepage and reported a false "no records found". Now that
+    // clickFirst honestly reports failure, treat it as a real failure too,
+    // rather than pressing on to scrape whatever's on screen.
+    if (!searchClicked) throw new ProviderError("portal_unavailable", "could not click Search — the button was blocked (likely a promo modal)", true);
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(800);
+    const postClickText = await page.locator("body").innerText().catch(() => "");
+    ctx.log("automation.debug", { step: "post_search_click", searchClicked, url: page.url(), bodyTextSample: postClickText.slice(0, 400) });
+    // Belt-and-braces: a successful click can still land somewhere unexpected
+    // (a stale CSRF token, a server-side error page, etc.) — confirmed live
+    // that this specific homepage tile text shows up when that happens. Fail
+    // honestly instead of scraping a page that was never a real results page.
+    if (/Registration of Document/i.test(postClickText) && /Token Availability/i.test(postClickText)) {
+      throw new ProviderError("portal_unavailable", "search submitted but landed back on the homepage, not a results page", true);
+    }
 
     // 4. optional OTP
     if (await page.locator("#otp-input").count()) {
@@ -323,6 +358,12 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     }
 
     const { outcome, encumbrancePresent, caveats } = deriveOutcome({ entries, periodFrom: req.period.from, nilHumanVerified: false, extraCaveats });
+
+    // When recording, give the video encoder a moment to actually flush the
+    // final frames (the Search click + results page) before context.close()
+    // finalizes the file — confirmed live: without this, the recording cut off
+    // right at the pre-click state even though the search itself succeeded.
+    if (cfg.recordVideoDir) await page.waitForTimeout(1500).catch(() => {});
 
     return {
       schemaVersion: "1.0",

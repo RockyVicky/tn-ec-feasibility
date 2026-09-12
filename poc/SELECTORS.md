@@ -162,6 +162,42 @@ both now fixed in `automation-worker.ts`:
   switch -> both promo modals cleared -> "Search/View EC" clicked -> Zone(5) ->
   District(20030) -> SRO(20387:1) -> Village(16094) cascaded and set -> Survey
   11 / Sub 1A1 added -> a real CAPTCHA rendered in the operator console -> a
-  human solved it -> outcome `NIL_UNCONFIRMED` (0 entries — correctly flagged as
-  needing operator confirmation, not assumed clean, per this project's core
-  design rule). No manual click-through needed anywhere in this run.
+  human solved it -> outcome `NIL_UNCONFIRMED`. No manual click-through needed
+  anywhere in this run. **Correction below: this "0 entries" outcome turned out
+  to be unreliable, not confirmed-genuine — see the next section.**
+
+## Correction (12 Sep 2026, later the same night) — the "0 entries" results above were not verified genuine
+
+Added a debug line logging the page's own text immediately after the Search
+click. It showed the **homepage**, not a results page, on every run checked —
+including one where the human answered within 38 seconds (ruling out a
+session/CSRF-timeout explanation). `clickFirst()` was also found to report
+"click succeeded" whenever an element merely *existed*, regardless of whether
+the click itself threw — so a blocked click was invisible. Fixed both:
+`clickFirst()` now clears any reappeared promo modal and retries once before
+honestly reporting failure, and the worker fails loudly (`portal_unavailable`)
+if the click didn't land or the post-click page still reads as the homepage,
+instead of silently scraping whatever's on screen.
+
+That fix did **not** resolve it — a fresh live check after applying it still
+landed on the homepage with the click reporting success. A follow-up
+standalone diagnostic script (bypassing the queue, to test the actual
+government site directly) then hit a *different* failure: clicking "Search/View
+EC" itself stopped reliably reaching the search form at all, with no modal and
+no error — just an empty homepage. That happened after roughly 15-20+ full page
+loads against tnreginet.gov.in from this machine within a couple of hours
+(automated runs plus standalone diagnostic scripts stacked back to back).
+
+**Working theory, not confirmed**: the site may be quietly rate-limiting or
+flagging repeated automated traffic from one IP, rather than this being a pure
+code bug. Deliberately stopped further live testing rather than keep hammering
+the real portal to chase it down further tonight.
+
+**Honest status as of now**: the free-search flow's *setup* (login-skip,
+navigation, cascading dropdowns, Add step, real CAPTCHA rendering) is solidly
+proven across many live runs. Whether the final Search submission reliably
+reaches a genuine results page is **unconfirmed** — every `NIL_UNCONFIRMED`
+result produced tonight after this was discovered should be treated as
+unverified, not as evidence of a real "no records" outcome. Next real test
+should happen after a cooldown period, with a single well-spaced attempt
+rather than rapid repeated ones, before trusting this path again.
