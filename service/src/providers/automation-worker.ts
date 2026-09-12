@@ -414,6 +414,23 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
           return { outerHTML: el.outerHTML.slice(0, 500), onclick, fnName: fnName ?? null, fnSource: fnSource?.slice(0, 2000) ?? null };
         }).catch((e) => ({ error: String(e) }));
         ctx.log("automation.debug", { step: "search_button_source", attempt, btnInfo });
+
+        // The button's own source shows three gates before it does anything:
+        // checkMandSearchDocYearWise() -> (async) getVillageDetails() ->
+        // encryptPlotFlat(). If any is falsy the function just stops — no
+        // error, no request, nothing visible, exactly what's been observed
+        // all night. Call each directly to see which one is actually failing,
+        // rather than continuing to infer it from the outside.
+        const gateCheck = await page.evaluate(async () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const g = globalThis as any;
+          const out: Record<string, unknown> = {};
+          try { out.checkMand = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise() : "fn-missing"; } catch (e) { out.checkMandError = String(e); }
+          try { out.villageDetailsValid = typeof g.getVillageDetails === "function" ? await g.getVillageDetails() : "fn-missing"; } catch (e) { out.villageDetailsError = String(e); }
+          try { out.encryptPlotFlat = typeof g.encryptPlotFlat === "function" ? g.encryptPlotFlat() : "fn-missing"; } catch (e) { out.encryptPlotFlatError = String(e); }
+          return out;
+        }).catch((e) => ({ error: String(e) }));
+        ctx.log("automation.debug", { step: "search_gate_check", attempt, gateCheck });
       }
 
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
