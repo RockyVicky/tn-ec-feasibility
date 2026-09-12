@@ -394,6 +394,28 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       await page.locator("#txt_Captcha, #ec-captcha").first().blur().catch(() => {});
       await page.waitForTimeout(1200);
 
+      // Three theories ruled out live tonight (wrong/expired CAPTCHA, a race
+      // with the async check, a silent JS error) — rather than guess at a
+      // fourth, read what the button's own code actually says it does. Pulls
+      // the onclick attribute and, if it's a plain function-name call, that
+      // function's real source straight out of the page.
+      if (cfg.recordVideoDir) {
+        // Runs inside the browser page, not Node — this project's tsconfig has
+        // no DOM lib, so document/window are reached via globalThis.
+        const btnInfo = await page.evaluate(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const g = globalThis as any;
+          const el = g.document.querySelector("#btn_SearchDoc");
+          if (!el) return null;
+          const onclick = el.getAttribute("onclick") ?? "";
+          const fnNameMatch = onclick.match(/^\s*([a-zA-Z_$][\w$]*)\s*\(/);
+          const fnName = fnNameMatch?.[1];
+          const fnSource = fnName && typeof g[fnName] === "function" ? g[fnName].toString() : null;
+          return { outerHTML: el.outerHTML.slice(0, 500), onclick, fnName: fnName ?? null, fnSource: fnSource?.slice(0, 2000) ?? null };
+        }).catch((e) => ({ error: String(e) }));
+        ctx.log("automation.debug", { step: "search_button_source", attempt, btnInfo });
+      }
+
       const searchClicked = await clickFirst(page, ["#btn_SearchDoc", "#ec-submit"]);
       // Confirmed live: a reappeared promo modal silently ate this exact click —
       // clickFirst used to report success regardless, so the worker scraped the
