@@ -261,13 +261,35 @@ CAPTCHA expiring after being screenshotted for the operator — it may be that
 the click on `#btn_SearchDoc` isn't actually triggering a real form
 submission in the first place (wrong element behind an invisible overlay, a
 JS handler that needs a different event sequence than Playwright's synthetic
-click produces, etc.), and everything since — the "Please Enter Valid
-Captcha" text, the homepage-looking reads — may be downstream symptoms of
-that, not separate root causes. **Not confirmed** — next real step, without
-touching the live portal again tonight, is to listen for whether a network
-request actually fires on click (`page.on('request', ...)`) to tell "click
-did nothing" apart from "click worked but the response is genuinely this
-page." Also fixed in the same pass: `rawArtifactRefs` was truncating a base64
+click produces, etc.). **Not confirmed** — next real step, without touching
+the live portal again tonight, is to listen for whether a network request
+actually fires on click (`page.on('request', ...)`) to tell "click did
+nothing" apart from "click worked but the response is genuinely this page."
+Also fixed in the same pass: `rawArtifactRefs` was truncating a base64
 screenshot to 24 characters (the exact same bug class as the CAPTCHA-image
 truncation from the night before) — now a proper reference string, matching
 every other provider's convention.
+
+## Correction to the above — the "homepage" reads were a red herring, not a real redirect
+
+Built a proper video of the click moment (see below) and, checking it against
+the same run's debug log, noticed the `bodyTextSample` that had been read all
+night as "landed on the homepage" is just the site's **universal header**
+("Hon'ble Chief Minister of Tamil Nadu... About Us / Services / Help...") —
+present at the top of *every* page on this site, the real search form
+included. Logging only the first 400 characters of `body.innerText()` means
+that header dominates the sample regardless of which page is actually
+loaded. So "it bounced to the homepage" was never actually proven — that was
+this session's own misreading of a page-detection check, not a finding about
+the portal's behavior. The `Registration of Document` + `Token Availability`
+homepage safety-check added earlier tonight is unaffected (it checks the full
+text, not a 400-char slice) and should be kept; the `bodyTextSample` debug
+field should not be trusted as a "which page is this" signal on its own.
+
+What's still true, though, and now confirmed a *third* independent way: a
+rapid screenshot burst captured continuously across the actual click (not
+sampled once before/after, but a real sequence spanning the whole moment,
+assembled into an actual video) shows **no visible change on screen for the
+full ~4-second window** the burst covered. That's the real, narrower, better-
+evidenced finding to chase next — not "it redirects to the homepage," but
+"the click may not be producing any visible effect at all."
