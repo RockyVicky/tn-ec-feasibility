@@ -1,6 +1,6 @@
 {
-  "at": "2026-09-12T08:32:31.997Z",
-  "pass": 16,
+  "at": "2026-09-12T09:50:43.824Z",
+  "pass": 17,
   "fail": 0,
   "results": [
     {
@@ -19,7 +19,7 @@
       "id": "D3",
       "desc": "8 test-case cards, each with steps + expect box + PASS/FAIL boxes + AI VERIFIED badge",
       "status": "PASS",
-      "ms": 93
+      "ms": 92
     },
     {
       "id": "D4",
@@ -37,61 +37,67 @@
       "id": "D6",
       "desc": "no console/page errors on load",
       "status": "PASS",
-      "ms": 0
+      "ms": 1
     },
     {
       "id": "D7",
       "desc": "dark mode: body background is dark, text is light",
       "status": "PASS",
-      "ms": 779
+      "ms": 771
     },
     {
       "id": "D8",
       "desc": "light mode renders and screenshot captured",
       "status": "PASS",
-      "ms": 766
+      "ms": 762
     },
     {
       "id": "D9",
       "desc": "mobile viewport: no horizontal overflow",
       "status": "PASS",
-      "ms": 701
+      "ms": 722
     },
     {
       "id": "D10",
       "desc": "technical-detail sections are collapsed by default",
       "status": "PASS",
-      "ms": 542
+      "ms": 541
     },
     {
       "id": "C1",
       "desc": "console loads with correct title",
       "status": "PASS",
-      "ms": 539
+      "ms": 549
     },
     {
       "id": "C2",
       "desc": "empty state shown when there are no tasks",
       "status": "PASS",
-      "ms": 563
+      "ms": 557
     },
     {
       "id": "C3",
       "desc": "a submitted request surfaces a CAPTCHA card with input + Submit",
       "status": "PASS",
-      "ms": 4545
+      "ms": 5030
+    },
+    {
+      "id": "C3b",
+      "desc": "CAPTCHA input keeps focus and typed text across the 5s auto-refresh",
+      "status": "PASS",
+      "ms": 5687
     },
     {
       "id": "C4",
       "desc": "typing an answer + Submit clears the task from the list",
       "status": "PASS",
-      "ms": 132
+      "ms": 111
     },
     {
       "id": "C5",
       "desc": "console links to the project dashboard",
       "status": "PASS",
-      "ms": 3
+      "ms": 2
     },
     {
       "id": "C6",

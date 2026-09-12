@@ -164,6 +164,23 @@ async function run() {
     assert(await opage.$('.task button'), "has a Submit button");
     await opage.screenshot({ path: path.join(SCREENS, "console-task.png"), fullPage: true });
   });
+  await check("C3b", "CAPTCHA input keeps focus and typed text across the 5s auto-refresh", async () => {
+    // Regression test: the console used to rebuild the whole task list (including
+    // a fresh <input>) on every 5s auto-refresh tick even when nothing had
+    // changed, which stole focus and wiped out whatever the operator was mid-way
+    // through typing. Fixed by skipping the rebuild when the open task ids are
+    // unchanged from the last render.
+    const input = await opage.$('.task input[type="text"]');
+    await input.click();
+    await input.type("PART");
+    await opage.waitForTimeout(5600); // past the console's 5s auto-refresh interval
+    const stillFocused = await opage.evaluate(
+      () => document.activeElement === document.querySelector('.task input[type="text"]'),
+    );
+    const value = await opage.$eval('.task input[type="text"]', (el) => el.value);
+    assert(stillFocused, "input lost focus across an auto-refresh tick with nothing changed");
+    eq(value, "PART", "typed value was wiped by an auto-refresh tick with nothing changed");
+  });
   await check("C4", "typing an answer + Submit clears the task from the list", async () => {
     await opage.fill('.task input[type="text"]', "QA-UI-123");
     await opage.click('.task button:has-text("Submit")');

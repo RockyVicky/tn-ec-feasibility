@@ -43,17 +43,28 @@
 <script>
 const list = document.getElementById('list');
 const countEl = document.getElementById('count');
+// Tracks which task ids are currently rendered so the 5s auto-refresh can skip
+// rebuilding the list when nothing actually changed — rebuilding always (even
+// with identical data) replaced the CAPTCHA/OTP <input> mid-keystroke and threw
+// away focus and whatever the operator had just typed.
+let renderedIds = null;
 
-async function load() {
+async function load(force) {
   let tasks = [];
   try {
     const res = await fetch('/ops/tasks?status=open');
     tasks = (await res.json()).tasks || [];
   } catch (e) {
+    renderedIds = null;
     list.innerHTML = '<div class="empty">Service not reachable. Start it with <code>npm run dev</code>.</div>';
     return;
   }
   countEl.textContent = tasks.length + ' open';
+
+  const ids = tasks.map((t) => t.id).sort().join(',');
+  if (!force && ids === renderedIds) return; // same open tasks — leave the DOM (and focus) alone
+  renderedIds = ids;
+
   if (!tasks.length) {
     list.innerHTML = '<div class="empty">No open tasks. When a worker hits a CAPTCHA / OTP / ambiguous result it appears here.</div>';
     return;
@@ -114,10 +125,10 @@ async function answer(id, body) {
     headers: { 'content-type': 'application/json', 'x-operator-id': 'console-user' },
     body: JSON.stringify(body),
   });
-  load();
+  load(true);
 }
 
-document.getElementById('refresh').onclick = load;
+document.getElementById('refresh').onclick = () => load(true);
 load();
 setInterval(load, 5000);
 </script>
