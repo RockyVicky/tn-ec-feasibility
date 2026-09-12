@@ -245,6 +245,7 @@ function buildProviders(config: Config): EcProvider[] {
             username: config.automation.username,
             password: config.automation.password,
             headless: config.automation.headless,
+            recordVideoDir: config.automation.recordVideoDir || undefined,
           }
         : {},
     ),

@@ -27,6 +27,7 @@ export class AutomationProvider implements EcProvider {
       username?: string;
       password?: string;
       headless?: boolean;
+      recordVideoDir?: string;
       simulateHtml?: string;
     } = {},
   ) {}
@@ -42,7 +43,13 @@ export class AutomationProvider implements EcProvider {
     if (this.opts.portalUrl) {
       const { runWorker } = await import("./automation-worker.ts");
       return runWorker(
-        { portalUrl: this.opts.portalUrl, username: this.opts.username, password: this.opts.password, headless: this.opts.headless },
+        {
+          portalUrl: this.opts.portalUrl,
+          username: this.opts.username,
+          password: this.opts.password,
+          headless: this.opts.headless,
+          recordVideoDir: this.opts.recordVideoDir,
+        },
         req,
         ctx,
       );

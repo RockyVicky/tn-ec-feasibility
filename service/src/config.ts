@@ -26,7 +26,7 @@ export interface Config {
     landeed: { baseUrl: string; apiKey: string };
     surepass: { baseUrl: string; apiKey: string };
   };
-  automation: { portalUrl: string; username: string; password: string; headless: boolean };
+  automation: { portalUrl: string; username: string; password: string; headless: boolean; recordVideoDir: string };
   /** ASSUMPTION (docs/assumptions.md A5): dedupe window for informational ECs. */
   dedupeWindowDays: number;
   /** ASSUMPTION (A6): webhook delivery retry budget. */
@@ -63,6 +63,9 @@ export function loadConfig(): Config {
       // Default headless; set to "false" to watch the worker's browser window
       // live (e.g. while diagnosing against the real portal).
       headless: env("AUTOMATION_HEADLESS", "true") !== "false",
+      // Set to a directory to record the run as a .webm video — useful proof of
+      // a live run when there's no way to show the headless browser on screen.
+      recordVideoDir: env("AUTOMATION_RECORD_VIDEO_DIR", ""),
     },
     dedupeWindowDays: Number(env("DEDUPE_WINDOW_DAYS", "14")),
     webhookRetry: { attempts: 8, baseDelayMs: 2000 },

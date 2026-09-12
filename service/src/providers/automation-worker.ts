@@ -19,6 +19,12 @@ export interface WorkerConfig {
   username?: string;
   password?: string;
   headless?: boolean;
+  /**
+   * When set, records the whole run as a .webm video via Playwright's built-in
+   * context recorder — useful for proving/inspecting a live run when there's no
+   * way to show the (headless) browser's window on screen directly.
+   */
+  recordVideoDir?: string;
 }
 
 /**
@@ -167,9 +173,13 @@ async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContex
 
 export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: RetrieveContext): Promise<EcResult> {
   let browser: Browser | undefined;
+  let context: import("playwright").BrowserContext | undefined;
   try {
     browser = await chromium.launch({ headless: cfg.headless ?? true });
-    const page = await browser.newPage();
+    context = await browser.newContext(
+      cfg.recordVideoDir ? { recordVideo: { dir: cfg.recordVideoDir, size: { width: 1280, height: 900 } } } : {},
+    );
+    const page = await context.newPage();
     const base = cfg.portalUrl.replace(/\/$/, "");
 
     // 1. login (only if actually required)
@@ -337,6 +347,9 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     if (err instanceof ProviderError) throw err;
     throw new ProviderError("portal_unavailable", `automation worker failed: ${(err as Error).message}`, true);
   } finally {
+    // context.close() must happen before browser.close() — it's what flushes
+    // and finalizes the recorded .webm file, if recording was enabled.
+    await context?.close().catch(() => {});
     await browser?.close().catch(() => {});
   }
 }
