@@ -22,11 +22,16 @@ export interface WorkerConfig {
 }
 
 /**
- * The real portal's homepage runs a promo modal ("Presence Less Registration")
- * that reappears on most navigations and sits on top of the login form — Playwright
- * correctly refuses to fill a field it's covering ("element is not visible"),
- * which is the exact failure this fixes. Best-effort, several strategies, never
- * throws: dismissing a promo popup is not part of the flow worth failing over.
+ * The real portal runs promo modals — "Presence Less Registration" on most
+ * navigations, and a separate "MobileAppModal" seen live intercepting a click
+ * on a *fresh* session (no existing cookies dismissing it, as a real returning
+ * visitor's browser would have) — that sit on top of whatever's underneath and
+ * block Playwright from clicking it ("element is not visible" / "intercepts
+ * pointer events"). There will likely be more of these over time; rather than
+ * naming each one, try known close-button patterns first and, if any `.modal.show`
+ * is still up after that, remove it and its backdrop directly — it's a marketing
+ * overlay, not something the flow ever needs to interact with. Best-effort,
+ * never throws: dismissing a promo popup is not part of the flow worth failing over.
  */
 async function dismissPromoModal(page: import("playwright").Page): Promise<void> {
   try {
@@ -47,33 +52,20 @@ async function dismissPromoModal(page: import("playwright").Page): Promise<void>
       }
     }
     await page.waitForTimeout(300);
+    // Guaranteed fallback: nothing legitimate in this flow is ever inside a
+    // Bootstrap-style `.modal.show` overlay, so any still standing is a promo
+    // that a close-button click missed — clear it and its backdrop directly.
+    // Runs inside the browser page, not Node — this project's tsconfig has no
+    // DOM lib (it's a server codebase), so `document` is reached via globalThis.
+    await page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const doc = (globalThis as any).document;
+      doc.querySelectorAll(".modal.show").forEach((m: { remove: () => void }) => m.remove());
+      doc.querySelectorAll(".modal-backdrop").forEach((m: { remove: () => void }) => m.remove());
+      doc.body.classList.remove("modal-open");
+    }).catch(() => {});
   } catch {
     // best-effort only
-  }
-}
-
-/**
- * The real portal's login inputs sit in a panel that's hidden until the header
- * "Login" control toggles it open (a JS-driven show/hide, not a page navigation) —
- * confirmed directly: loading the page alone leaves #username present but not
- * visible. Try a few real-world candidates (English + Tamil, button or link) and
- * click whichever is actually visible and clickable.
- */
-async function revealLoginPanel(page: import("playwright").Page): Promise<void> {
-  const candidates = [
-    page.getByRole("button", { name: /^(login|sign in|உள்நுழைவு)$/i }),
-    page.getByRole("link", { name: /^(login|sign in|உள்நுழைவு)$/i }),
-    page.locator('button:has-text("Login"), a:has-text("Login")'),
-    page.locator('button:has-text("Sign In"), a:has-text("Sign In")'),
-    page.locator("#loginBtn, .login-btn, [onclick*=\"login\" i]"),
-  ];
-  for (const loc of candidates) {
-    const el = loc.first();
-    if ((await el.count().catch(() => 0)) && (await el.isVisible().catch(() => false))) {
-      await el.click({ timeout: 3000 }).catch(() => {});
-      await page.waitForTimeout(500);
-      if (await page.locator("#username").first().isVisible().catch(() => false)) return;
-    }
   }
 }
 
@@ -111,6 +103,26 @@ async function clickFirst(page: import("playwright").Page, selectors: string[]):
   return false;
 }
 
+/**
+ * The real portal's Zone -> District -> SRO -> Village chain is a genuine
+ * network round-trip (confirmed live: each select's options only populate after
+ * its own AJAX call returns), not a fixed local delay — a flat sleep guessed too
+ * short here on a first live automated run and produced a garbage CAPTCHA capture
+ * (the worker pressed on to a page state that was never actually ready). Poll for
+ * the child <select> to actually gain options instead of guessing a duration.
+ * No-ops immediately for selectors that don't exist (e.g. the mock portal, whose
+ * equivalents aren't cascading) or that already have options (nothing to wait for).
+ */
+async function waitForOptions(page: import("playwright").Page, selector: string, minCount = 2, timeoutMs = 10000): Promise<void> {
+  const el = page.locator(selector).first();
+  if (!(await el.count().catch(() => 0))) return;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if ((await el.locator("option").count().catch(() => 0)) >= minCount) return;
+    await page.waitForTimeout(250);
+  }
+}
+
 async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContext, inputSelectors: string[]): Promise<void> {
   // Only one of these ever exists on a given portal, so joining into one CSS
   // selector resolves to exactly the right single element either way.
@@ -125,13 +137,21 @@ async function solveCaptcha(page: import("playwright").Page, ctx: RetrieveContex
     `img[src*="captcha" i]`,
     `img[alt*="captcha" i]`,
   ];
+  // Poll briefly rather than checking once: on the real portal the CAPTCHA
+  // image only exists after the "Add" step's re-render settles, and checking
+  // too early is exactly what produced a full-page (garbage) capture on the
+  // first live automated run.
   let shot: Buffer | undefined;
-  for (const sel of imgCandidates) {
-    const img = page.locator(sel).first();
-    if (await img.count().catch(() => 0)) {
-      shot = await img.screenshot().catch(() => undefined);
-      if (shot) break;
+  const deadline = Date.now() + 5000;
+  while (!shot && Date.now() < deadline) {
+    for (const sel of imgCandidates) {
+      const img = page.locator(sel).first();
+      if (await img.count().catch(() => 0)) {
+        shot = await img.screenshot().catch(() => undefined);
+        if (shot) break;
+      }
     }
+    if (!shot) await page.waitForTimeout(250);
   }
   shot ??= await page.screenshot();
 
@@ -152,17 +172,33 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     const page = await browser.newPage();
     const base = cfg.portalUrl.replace(/\/$/, "");
 
-    // 1. login
+    // 1. login (only if actually required)
+    // Confirmed live (12 Sep 2026): the real portal's free "Search & View EC"
+    // needs no account at all. #username exists in its DOM from page load
+    // regardless — it's a hidden header toggle for an optional citizen login —
+    // so checking count() alone (as an earlier version of this code did) means
+    // ALWAYS taking the login branch on the real portal, which is wrong for this
+    // search and was the actual cause of a garbled/wrong CAPTCHA capture tonight.
+    // Checking visibility instead means: log in only when a portal (like the
+    // mock) actually presents the field up front; never chase down a hidden one.
     await page.goto(`${base}/portal`, { waitUntil: "domcontentloaded" });
+    // The real portal's footer links (incl. "Search/View EC") are rendered by
+    // client-side JS that finishes shortly after domcontentloaded, not at it —
+    // looking for them too early found nothing on a live run. Give it a moment.
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    // Confirmed live: a fresh session (no prior language cookie, as any first-time
+    // automated run has) renders the whole page in Tamil by default — every
+    // English text/selector match below silently finds nothing until this runs.
+    // A manual walkthrough doesn't hit this because a human already switched
+    // language earlier in the same browser profile.
+    const englishLink = page.locator("a[href*=\"changeLanguage('en')\"]");
+    if (await englishLink.count().catch(() => 0)) {
+      await dismissPromoModal(page);
+      await englishLink.first().click({ timeout: 5000 }).catch(() => {});
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    }
     await dismissPromoModal(page);
-    if (await page.locator("#username").count()) {
-      // On the real portal, #username exists in the DOM from page load but stays
-      // hidden until the header "Login" control toggles its panel open — a plain
-      // goto() never triggers that, so fill() times out waiting for visibility.
-      if (!(await page.locator("#username").first().isVisible().catch(() => false))) {
-        await revealLoginPanel(page);
-        await dismissPromoModal(page); // the promo can reappear after the click too
-      }
+    if (await page.locator("#username").first().isVisible().catch(() => false)) {
       await page.fill("#username", cfg.username ?? "worker");
       await page.fill("#password", cfg.password ?? "worker");
       await solveCaptcha(page, ctx, ["#captcha"]);
@@ -179,10 +215,16 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
     // URL there, and fall back to the real portal's click-through otherwise.
     const hasSearchForm = async () => (await page.locator("#ec-submit, #btn_SearchDoc").count()) > 0;
     if (!(await hasSearchForm())) {
-      const searchLink = page.getByRole("link", { name: /search\s*\/?\s*view\s*ec/i });
-      if (await searchLink.count().catch(() => 0)) {
+      // Not getByRole("link", ...): the real portal's footer anchor has no href
+      // attribute (onclick-driven nav instead), so it carries no accessible
+      // "link" role for Playwright to match on — confirmed the hard way live.
+      // Match on visible text instead, which works regardless of markup style.
+      const searchLink = page.locator("a", { hasText: /search\s*\/?\s*view\s*ec/i });
+      const linkFound = await searchLink.count().catch(() => 0);
+      ctx.log("automation.debug", { step: "search_link", found: linkFound > 0, url: page.url() });
+      if (linkFound) {
         await dismissPromoModal(page);
-        await searchLink.first().click({ timeout: 5000 }).catch(() => {});
+        await searchLink.first().click({ timeout: 5000 }).catch((e) => ctx.log("automation.debug", { step: "search_link_click_failed", error: String(e) }));
         await page.waitForTimeout(800);
       }
       if (!(await hasSearchForm())) {
@@ -190,27 +232,36 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
       }
       await dismissPromoModal(page);
     }
+    ctx.log("automation.debug", { step: "search_form_reached", found: await hasSearchForm(), url: page.url() });
 
     const p = req.property;
-    // Zone -> District -> SRO -> Village cascade via AJAX on the real portal
-    // (confirmed live: each combo's options only populate ~1s after its parent
-    // fires) — the pause between selects is required there, harmless on the mock.
+    // Zone -> District -> SRO -> Village cascade via AJAX on the real portal —
+    // wait for each child's options to actually arrive rather than guessing a
+    // fixed delay (see waitForOptions).
     await fillFirst(page, ["#cmb_Zone", "#zone"], p.zone);
-    await page.waitForTimeout(800);
+    await waitForOptions(page, "#cmb_District").catch(() => {});
     await fillFirst(page, ["#cmb_District", "#district"], p.district);
-    await page.waitForTimeout(800);
+    await waitForOptions(page, "#cmb_SroName").catch(() => {});
     await fillFirst(page, ["#cmb_SroName", "#sro"], p.sroCode);
-    await page.waitForTimeout(800);
     if (p.village) {
+      await waitForOptions(page, "#cmb_Village").catch(() => {});
       await fillFirst(page, ["#cmb_Village", "#village"], p.village);
-      await page.waitForTimeout(500);
     }
+    ctx.log("automation.debug", {
+      step: "cascade_filled",
+      zone: await page.locator("#cmb_Zone, #zone").first().inputValue().catch(() => "?"),
+      district: await page.locator("#cmb_District, #district").first().inputValue().catch(() => "?"),
+      sro: await page.locator("#cmb_SroName, #sro").first().inputValue().catch(() => "?"),
+      village: await page.locator("#cmb_Village, #village").first().inputValue().catch(() => "?"),
+    });
     // Real portal: survey number and subdivision number are separate fields
     // (e.g. "11" and "1A1", not the combined "11/1A1" printed on an old deed —
     // confirmed live) that must be added as a row before the CAPTCHA even renders.
     if (p.surveyNumber) await fillFirst(page, ["#txt_SurveyNo", "#survey"], p.surveyNumber);
     if (p.subdivisionNumber) await fillFirst(page, ["#txt_SubDivisionNo", "#subdiv"], p.subdivisionNumber);
-    await clickFirst(page, ["#btn_AddSurvey"]); // real-portal-only step; no-op on the mock
+    const addClicked = await clickFirst(page, ["#btn_AddSurvey"]);
+    if (addClicked) await page.waitForTimeout(500); // real-portal-only step; no-op on the mock
+    ctx.log("automation.debug", { step: "add_survey", clicked: addClicked, captchaImgPresent: await page.locator("#captcha, #txt_Captcha ~ img, #ec-captcha ~ img").count().catch(() => 0) });
     // NOTE: only proven live via the real date-picker widget (click field -> click
     // month/year header -> click day), not via fill(). fill() is tried here as the
     // simpler first attempt and is confirmed to work against the mock; if a live

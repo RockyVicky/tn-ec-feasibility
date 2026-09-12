@@ -26,7 +26,7 @@ export interface Config {
     landeed: { baseUrl: string; apiKey: string };
     surepass: { baseUrl: string; apiKey: string };
   };
-  automation: { portalUrl: string; username: string; password: string };
+  automation: { portalUrl: string; username: string; password: string; headless: boolean };
   /** ASSUMPTION (docs/assumptions.md A5): dedupe window for informational ECs. */
   dedupeWindowDays: number;
   /** ASSUMPTION (A6): webhook delivery retry budget. */
@@ -60,6 +60,9 @@ export function loadConfig(): Config {
       portalUrl: env("AUTOMATION_PORTAL_URL", ""),
       username: env("AUTOMATION_USERNAME", ""),
       password: env("AUTOMATION_PASSWORD", ""),
+      // Default headless; set to "false" to watch the worker's browser window
+      // live (e.g. while diagnosing against the real portal).
+      headless: env("AUTOMATION_HEADLESS", "true") !== "false",
     },
     dedupeWindowDays: Number(env("DEDUPE_WINDOW_DAYS", "14")),
     webhookRetry: { attempts: 8, baseDelayMs: 2000 },

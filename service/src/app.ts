@@ -240,7 +240,12 @@ function buildProviders(config: Config): EcProvider[] {
     new SurepassProvider(config.aggregators.surepass),
     new AutomationProvider(
       config.automation.portalUrl
-        ? { portalUrl: config.automation.portalUrl, username: config.automation.username, password: config.automation.password }
+        ? {
+            portalUrl: config.automation.portalUrl,
+            username: config.automation.username,
+            password: config.automation.password,
+            headless: config.automation.headless,
+          }
         : {},
     ),
   ];

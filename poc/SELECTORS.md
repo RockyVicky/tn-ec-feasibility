@@ -125,3 +125,43 @@ ids kept as fallbacks so both keep working):
   result: "No Documents registered during the Search Period." (a true nil result
   for that narrow window, not a bug) — proving the whole chain works end to end
   when pointed at the real ids.
+
+## Confirmed live (12 Sep 2026, third session) — the automated worker's first real end-to-end run
+
+Wiring in the ids above wasn't enough on its own: the very first automated
+(headless Playwright) run against the real portal still produced a garbled
+CAPTCHA capture, same as the very first manual one had. Root-caused with a
+standalone diagnostic script rather than guessing — two real, distinct bugs,
+both now fixed in `automation-worker.ts`:
+
+- **A fresh session renders the whole page in Tamil by default.** Every English
+  text/selector match (the "Search/View EC" link included) silently finds
+  nothing until the page's own "English" link (`a[href*="changeLanguage('en')"]`)
+  is clicked. A manual walkthrough never hits this because a human's browser
+  profile already carries the language choice from an earlier session — an
+  automated worker starting cold always sees Tamil first.
+- **A second promo modal exists** (`id="MobileAppModal"`, distinct from the
+  "Presence Less Registration" one already handled) that blocked a click on a
+  first-time/cookie-less session. Rather than special-casing another modal by
+  name, `dismissPromoModal()` now also force-removes any `.modal.show` /
+  `.modal-backdrop` left standing after the close-button attempt — a promo
+  overlay is never something the flow needs to interact with, so this should
+  hold for whatever the next one turns out to be called.
+- Also fixed in the same pass: the login-branch check was `if (#username
+  exists)`, but `#username` exists in the real page's DOM from load (hidden
+  behind a header toggle) regardless of whether login is actually needed —
+  meaning the worker was *always* taking the login branch on the real portal.
+  Checking `isVisible()` instead means it only logs in when a portal (like the
+  mock) presents the field up front, matching what's actually confirmed: this
+  free search needs no account at all.
+- Diagnosed via a disposable standalone Playwright script rather than
+  instrumenting the real request path first — much faster to iterate (dump
+  `navigator.webdriver`, `page.content()`, live link lists) without waiting on
+  the queue/HITL round trip each time.
+- **Result: a fully autonomous run, end to end**, live: page load -> language
+  switch -> both promo modals cleared -> "Search/View EC" clicked -> Zone(5) ->
+  District(20030) -> SRO(20387:1) -> Village(16094) cascaded and set -> Survey
+  11 / Sub 1A1 added -> a real CAPTCHA rendered in the operator console -> a
+  human solved it -> outcome `NIL_UNCONFIRMED` (0 entries — correctly flagged as
+  needing operator confirmation, not assumed clean, per this project's core
+  design rule). No manual click-through needed anywhere in this run.
