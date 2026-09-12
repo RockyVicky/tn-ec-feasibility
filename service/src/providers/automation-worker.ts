@@ -426,8 +426,25 @@ export async function runWorker(cfg: WorkerConfig, req: EcRequest, ctx: Retrieve
           const g = globalThis as any;
           const out: Record<string, unknown> = {};
           try {
-            out.checkMandSource = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise.toString().slice(0, 3000) : "fn-missing";
             out.checkMand = typeof g.checkMandSearchDocYearWise === "function" ? g.checkMandSearchDocYearWise() : "fn-missing";
+            // checkMandSearchDocYearWise() only returns one boolean — read
+            // every individual condition it checks directly, so we know
+            // exactly which one(s) are actually failing instead of guessing.
+            const $ = g.jQuery ?? g.$;
+            out.mandFields = {
+              zone: $("#cmb_Zone").val(),
+              district: $("#cmb_District").val(),
+              sro: $("#cmb_SroName").val(),
+              revenueDistrict: $("#cmb_RevenueDistrict").val(),
+              revenueTaluka: $("#cmb_RevenueTaluka").val(),
+              periodStart: $("#txt_PeriodStartDt").val(),
+              periodEnd: $("#txt_PeriodEndDt").val(),
+              convExtent: $("#txt_convExtent").val(),
+              surveyRowCount: g.document.getElementById("multiAddSurvey")?.getElementsByTagName("tbody")[0]?.rows.length ?? "elem-missing",
+              validateCaptcheForEc: typeof g.validateCaptcheForEc === "function" ? g.validateCaptcheForEc() : "fn-missing",
+              validateFromDate: typeof g.validateFromDate === "function" ? g.validateFromDate() : "fn-missing",
+              validateToDate: typeof g.validateToDate === "function" ? g.validateToDate() : "fn-missing",
+            };
           } catch (e) { out.checkMandError = String(e); }
           try { out.villageDetailsValid = typeof g.getVillageDetails === "function" ? await g.getVillageDetails() : "fn-missing"; } catch (e) { out.villageDetailsError = String(e); }
           try { out.encryptPlotFlat = typeof g.encryptPlotFlat === "function" ? g.encryptPlotFlat() : "fn-missing"; } catch (e) { out.encryptPlotFlatError = String(e); }
