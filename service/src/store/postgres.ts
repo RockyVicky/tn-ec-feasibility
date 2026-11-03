@@ -95,4 +95,9 @@ export class PostgresRequestStore implements RequestStore {
     );
     return r.rows[0] ? this.hydrate(r.rows[0]) : undefined;
   }
+
+  async list(): Promise<StoredRequest[]> {
+    const r = await this.db.query<Row>(`SELECT * FROM ec_requests ORDER BY created_at DESC LIMIT 200`);
+    return Promise.all(r.rows.map((row) => this.hydrate(row)));
+  }
 }

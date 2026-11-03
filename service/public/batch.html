@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EC Service — Batch Run</title>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#f7f7f8; --card:#fff; --ink:#1a1a1a; --muted:#666; --line:#e3e3e6;
+    --accent:#2557d6; --accent-ink:#fff; --ok:#1a7f37; --ok-bg:#e8f5ea;
+    --warn:#b7791f; --warn-bg:#fdf3e2; --fail:#c0392b; --fail-bg:#fbeceb;
+    --wait-bg:#eef0f3; --radius:12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131417; --card:#1c1d21; --ink:#edeef0; --muted:#9aa0a6; --line:#2c2d32;
+      --accent:#7aa2ff; --accent-ink:#0b1020; --ok:#4cc26a; --ok-bg:#132018;
+      --warn:#e3b341; --warn-bg:#241c0d; --fail:#f07468; --fail-bg:#2a1512; --wait-bg:#222327; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:20px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; background:var(--card); }
+  header h1 { font-size:17px; margin:0; font-weight:650; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header a { color:var(--muted); font-size:12px; text-decoration:none; margin-left:auto; }
+  header a:hover { color:var(--accent); }
+  main { max-width:1080px; margin:0 auto; padding:28px; }
+
+  .stepper { display:flex; align-items:center; gap:8px; margin-bottom:28px; }
+  .step { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; font-weight:600; }
+  .step .n { width:24px; height:24px; border-radius:50%; background:var(--wait-bg); color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .step.active { color:var(--ink); }
+  .step.active .n { background:var(--accent); color:var(--accent-ink); }
+  .step.done .n { background:var(--ok); color:#fff; }
+  .step-line { flex:1; height:1px; background:var(--line); min-width:24px; max-width:60px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-bottom:20px; }
+  .card h2 { font-size:14px; margin:0 0 4px; }
+  .card .hint { color:var(--muted); font-size:12px; margin-bottom:16px; }
+
+  .dropzone { border:2px dashed var(--line); border-radius:var(--radius); padding:40px 20px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; }
+  .dropzone:hover, .dropzone.drag { border-color:var(--accent); background:var(--wait-bg); }
+  .dropzone .icon { font-size:28px; margin-bottom:8px; }
+  .dropzone .big { font-weight:600; margin-bottom:4px; }
+  .dropzone .small { color:var(--muted); font-size:12px; }
+  input[type=file] { display:none; }
+
+  button { font:inherit; font-weight:600; padding:9px 18px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:transparent; }
+  button.primary:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:transparent; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  tr:last-child td { border-bottom:none; }
+  td input { font:inherit; font-size:12.5px; width:100%; padding:5px 7px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
+  .warn-note { color:var(--warn); font-size:11px; margin-top:3px; }
+  .file-name { color:var(--muted); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .record-card { border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:12px; background:var(--bg); }
+  .record-card:last-child { margin-bottom:0; }
+  .record-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .record-head .fname { font-weight:600; font-size:13px; }
+  .record-head .fnum { color:var(--muted); font-size:11.5px; }
+  .field-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; }
+  .field-grid label { display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:4px; font-weight:600; }
+  .field-grid input { font:inherit; font-size:13px; width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--ink); }
+  .field-grid input:focus { outline:none; border-color:var(--accent); }
+
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:.02em; }
+  .badge .dot { width:6px; height:6px; border-radius:50%; }
+  .badge.wait { background:var(--wait-bg); color:var(--muted); } .badge.wait .dot { background:var(--muted); }
+  .badge.run { background:#e7edff; color:var(--accent); } .badge.run .dot { background:var(--accent); animation:pulse 1.2s infinite; }
+  @media (prefers-color-scheme: dark) { .badge.run { background:#1a2340; } }
+  .badge.human { background:var(--warn-bg); color:var(--warn); } .badge.human .dot { background:var(--warn); animation:pulse 1.2s infinite; }
+  .badge.ok { background:var(--ok-bg); color:var(--ok); } .badge.ok .dot { background:var(--ok); }
+  .badge.fail { background:var(--fail-bg); color:var(--fail); } .badge.fail .dot { background:var(--fail); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .progress-wrap { margin-bottom:18px; }
+  .progress-top { display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  .progress-bar { height:8px; border-radius:999px; background:var(--wait-bg); overflow:hidden; }
+  .progress-bar .fill { height:100%; background:var(--accent); border-radius:999px; transition:width .3s; }
+
+  .captcha-panel { background:var(--warn-bg); border:1px solid var(--warn); border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
+  .captcha-panel h3 { margin:0 0 10px; font-size:13px; color:var(--warn); }
+  .captcha-panel img { display:block; border-radius:8px; border:1px solid var(--line); background:#fff; margin-bottom:10px; max-width:260px; }
+  .captcha-row { display:flex; gap:8px; }
+  .captcha-row input { font:inherit; padding:8px 12px; border:1px solid var(--line); border-radius:8px; flex:1; background:var(--card); color:var(--ink); }
+
+  .pdf-link { font-size:12px; color:var(--accent); text-decoration:none; }
+  .fail-msg { font-size:11.5px; color:var(--fail); max-width:220px; }
+  .eta { font-size:11.5px; color:var(--muted,#888); }
+  .eta-over { color:var(--fail); }
+  .empty { text-align:center; color:var(--muted); padding:30px; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .2s; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EC Batch Run</h1>
+  <span class="sub">upload a folder of EC PDFs → review → run, one at a time</span>
+  <a href="/public/console.html">operator console →</a>
+</header>
+<main>
+  <div class="stepper" id="stepper">
+    <div class="step active" data-step="1"><span class="n">1</span> Upload</div>
+    <div class="step-line"></div>
+    <div class="step" data-step="2"><span class="n">2</span> Review</div>
+    <div class="step-line"></div>
+    <div class="step" data-step="3"><span class="n">3</span> Run</div>
+  </div>
+
+  <div id="uploadStage" class="card">
+    <h2>Upload EC PDFs</h2>
+    <div class="hint">Select or drag in every PDF for this batch — the app reads Zone / District / SRO / Village / Survey No. from each one.</div>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📄</div>
+      <div class="big">Drop PDFs here, or click to browse</div>
+      <div class="small">Multiple files at once — this is the "folder" of 10 PDFs</div>
+      <input type="file" id="fileInput" multiple accept="application/pdf" />
+    </div>
+  </div>
+
+  <div id="reviewStage" class="card" style="display:none">
+    <h2>Review extracted details</h2>
+    <div class="hint">Extraction is best-effort — check and fix any field before starting. Nothing runs until you click Start Batch.</div>
+    <div id="reviewBody"></div>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <button class="primary" id="startBtn">Start Batch</button>
+      <button class="ghost" id="resetBtn">Start over</button>
+    </div>
+  </div>
+
+  <div id="runStage" style="display:none">
+    <div class="progress-wrap">
+      <div class="progress-top"><span id="progressLabel">0 of 0 complete</span><span id="progressPct">0%</span></div>
+      <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div id="captchaArea"></div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead><tr><th>File</th><th>Zone / District / SRO / Village</th><th>Survey</th><th>Status</th><th>Result</th></tr></thead>
+        <tbody id="runBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const uploadStage = document.getElementById('uploadStage');
+const reviewStage = document.getElementById('reviewStage');
+const runStage = document.getElementById('runStage');
+const reviewBody = document.getElementById('reviewBody');
+const runBody = document.getElementById('runBody');
+const stepper = document.getElementById('stepper');
+let batch = null;
+let pollTimer = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function setStep(n) {
+  [...stepper.querySelectorAll('.step')].forEach(el => {
+    const s = Number(el.dataset.step);
+    el.classList.toggle('active', s === n);
+    el.classList.toggle('done', s < n);
+  });
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) upload(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) upload(fileInput.files); });
+
+async function upload(fileList) {
+  const pdfs = [...fileList].filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (!pdfs.length) { toast('No .pdf files selected'); return; }
+  dropzone.querySelector('.big').textContent = `Reading ${pdfs.length} PDF(s)…`;
+  const fd = new FormData();
+  for (const f of pdfs) fd.append('files', f, f.name);
+  try {
+    const res = await fetch('/ops/batch', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(await res.text());
+    batch = await res.json();
+    renderReview();
+    uploadStage.style.display = 'none';
+    reviewStage.style.display = 'block';
+    setStep(2);
+  } catch (e) {
+    toast('Upload failed: ' + e.message);
+    dropzone.querySelector('.big').textContent = 'Drop PDFs here, or click to browse';
+  }
+}
+
+function renderReview() {
+  reviewBody.innerHTML = '';
+  batch.records.forEach((rec, i) => {
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    const warn = rec.extractionWarning ? `<div class="warn-note">⚠ ${rec.extractionWarning}</div>` : '';
+    card.innerHTML = `
+      <div class="record-head">
+        <div><span class="fnum">#${i + 1}</span> &nbsp; <span class="fname" title="${rec.fileName}">${rec.fileName}</span></div>
+      </div>
+      ${warn}
+      <div class="field-grid">
+        <div><label>Zone</label><input data-field="zone" value="${rec.extracted.zone}"></div>
+        <div><label>District</label><input data-field="district" value="${rec.extracted.district}"></div>
+        <div><label>SRO</label><input data-field="sroCode" value="${rec.extracted.sroCode}"></div>
+        <div><label>Village</label><input data-field="village" value="${rec.extracted.village}"></div>
+        <div><label>Survey No.</label><input data-field="surveyNumber" value="${rec.extracted.surveyNumber}"></div>
+        <div><label>Period from</label><input data-field="periodFrom" value="${rec.periodFrom}"></div>
+        <div><label>Period to</label><input data-field="periodTo" value="${rec.periodTo}"></div>
+      </div>`;
+    card.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', () => saveRecordEdit(rec.id, inp.dataset.field, inp.value));
+    });
+    reviewBody.appendChild(card);
+  });
+}
+
+async function saveRecordEdit(recordId, field, value) {
+  const isPeriod = field === 'periodFrom' || field === 'periodTo';
+  const patch = isPeriod ? { [field]: value } : { extracted: { [field]: value } };
+  await fetch(`/ops/batch/${batch.id}/records/${recordId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+  }).catch(() => {});
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  const res = await fetch(`/ops/batch/${batch.id}/start`, { method: 'POST' });
+  if (!res.ok) { toast('Could not start batch'); btn.disabled = false; btn.textContent = 'Start Batch'; return; }
+  localStorage.setItem('activeBatchId', batch.id);
+  enterRunStage();
+});
+
+function enterRunStage() {
+  uploadStage.style.display = 'none';
+  reviewStage.style.display = 'none';
+  runStage.style.display = 'block';
+  setStep(3);
+  renderRun();
+  pollTimer = setInterval(pollBatch, 2500);
+  pollBatch();
+}
+
+// The batch keeps running server-side even if this tab reloads — the run
+// itself has no "pause" button, it's one continuous background job. Without
+// this, a refresh lost all connection to it and dropped the user back to a
+// blank Upload screen with no way back in, which is exactly what happened
+// live. Reconnect to whatever was last running instead.
+(async function resumeActiveBatch() {
+  const id = localStorage.getItem('activeBatchId');
+  if (!id) return;
+  const res = await fetch(`/ops/batch/${id}`);
+  if (!res.ok) { localStorage.removeItem('activeBatchId'); return; }
+  batch = await res.json();
+  if (!batch.started) return; // never actually started - let them re-review/start normally
+  if (batch.completedAt) { localStorage.removeItem('activeBatchId'); }
+  enterRunStage();
+})();
+
+const STATUS_LABEL = {
+  extracted: ['wait', 'Queued'], queued: ['wait', 'Queued'], in_progress: ['run', 'Running'],
+  needs_human: ['human', 'Needs CAPTCHA'], completed: ['ok', 'Done'], partial: ['ok', 'Done'],
+  failed: ['fail', 'Failed'],
+};
+
+function renderRun() {
+  runBody.innerHTML = '';
+  for (const rec of batch.records) {
+    const tr = document.createElement('tr');
+    tr.id = `row-${rec.id}`;
+    const combo = [rec.extracted.zone, rec.extracted.district, rec.extracted.sroCode, rec.extracted.village].filter(Boolean).join(' / ');
+    tr.innerHTML = `
+      <td><div class="file-name" title="${rec.fileName}">${rec.fileName}</div></td>
+      <td>${combo}</td>
+      <td>${rec.extracted.surveyNumber}</td>
+      <td class="status-cell"></td>
+      <td class="result-cell"></td>`;
+    runBody.appendChild(tr);
+  }
+  updateRunRows();
+}
+
+function updateRunRows() {
+  let doneCount = 0;
+  for (const rec of batch.records) {
+    const tr = document.getElementById(`row-${rec.id}`);
+    if (!tr) continue;
+    const [cls, label] = STATUS_LABEL[rec.status] || ['wait', rec.status];
+    if (['completed', 'partial', 'failed'].includes(rec.status)) doneCount++;
+    tr.querySelector('.status-cell').innerHTML = `<span class="badge ${cls}"><span class="dot"></span>${label}</span>`;
+    const resultCell = tr.querySelector('.result-cell');
+    if (rec.pdfPath) {
+      const name = rec.pdfPath.split(/[\\/]/).pop();
+      resultCell.innerHTML = `<a class="pdf-link" href="/ops/downloads/${encodeURIComponent(name)}" target="_blank">open PDF ↗</a>`;
+    } else if (rec.failureMessage) {
+      resultCell.innerHTML = `<div class="fail-msg" title="${rec.failureMessage}">${rec.failureMessage.slice(0, 60)}</div>`;
+    } else if ((rec.status === 'queued' || rec.status === 'in_progress' || rec.status === 'needs_human') && rec.timeoutAt) {
+      resultCell.innerHTML = etaHtml(rec);
+    } else {
+      resultCell.textContent = '—';
+    }
+  }
+  const total = batch.records.length;
+  document.getElementById('progressLabel').textContent = `${doneCount} of ${total} complete`;
+  document.getElementById('progressPct').textContent = `${total ? Math.round((doneCount / total) * 100) : 0}%`;
+  document.getElementById('progressFill').style.width = `${total ? (doneCount / total) * 100 : 0}%`;
+  if (doneCount === total && total > 0) {
+    clearInterval(pollTimer);
+    localStorage.removeItem('activeBatchId');
+    toast('Batch finished');
+  }
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+// Shows a realistic estimate (not a promise) and, once that's passed, how
+// long until the hard timeout forces this record to be cancelled and the
+// batch to move on — so "Running" never looks like an indefinite hang.
+function etaHtml(rec) {
+  const now = Date.now();
+  const est = new Date(rec.estimatedEndAt).getTime();
+  const hard = new Date(rec.timeoutAt).getTime();
+  if (now < est) {
+    return `<div class="eta" title="typical run finishes by this time">~${fmtTime(rec.estimatedEndAt)}</div>`;
+  }
+  if (now < hard) {
+    return `<div class="eta eta-over" title="running longer than typical; will be cancelled and skipped if not done by this time">slow — moves on by ${fmtTime(rec.timeoutAt)}</div>`;
+  }
+  return `<div class="eta eta-over">wrapping up…</div>`;
+}
+
+let lastCaptchaTaskId = null;
+async function pollBatch() {
+  const res = await fetch(`/ops/batch/${batch.id}`);
+  if (!res.ok) return;
+  batch = await res.json();
+  updateRunRows();
+  await pollCaptcha();
+}
+
+async function pollCaptcha() {
+  const area = document.getElementById('captchaArea');
+  const res = await fetch('/ops/tasks?status=open');
+  if (!res.ok) return;
+  const { tasks } = await res.json();
+  const task = tasks.find(t => t.kind === 'captcha' || t.kind === 'otp');
+  if (!task) { area.innerHTML = ''; lastCaptchaTaskId = null; return; }
+  if (task.id === lastCaptchaTaskId) return;
+  lastCaptchaTaskId = task.id;
+  area.innerHTML = `
+    <div class="captcha-panel">
+      <h3>⚠ CAPTCHA needed to continue</h3>
+      <img src="${task.context.imageBase64}" alt="captcha" />
+      <div class="captcha-row">
+        <input id="captchaInput" placeholder="Type what you see" autofocus />
+        <button class="primary" id="captchaSubmit">Submit</button>
+      </div>
+    </div>`;
+  const submit = () => {
+    const val = document.getElementById('captchaInput').value.trim();
+    if (!val) return;
+    fetch(`/ops/tasks/${task.id}/answer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: task.kind, value: val }),
+    }).then(() => { area.innerHTML = ''; lastCaptchaTaskId = null; });
+  };
+  document.getElementById('captchaSubmit').addEventListener('click', submit);
+  document.getElementById('captchaInput').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+}
+</script>
+</body>
+</html>

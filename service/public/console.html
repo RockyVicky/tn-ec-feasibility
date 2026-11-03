@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>EC Service — Operator Console</title>
 <style>
-  :root { color-scheme: light dark; --bg:#f7f7f8; --card:#fff; --ink:#1a1a1a; --muted:#666; --line:#e3e3e6; --accent:#2557d6; --ok:#1a7f37; --warn:#b7791f; }
+  :root { color-scheme: light dark; --bg:#f7f7f8; --card:#fff; --ink:#1a1a1a; --muted:#666; --line:#e3e3e6; --accent:#2557d6; --ok:#1a7f37; --warn:#b7791f; --fail:#c0392b; }
   @media (prefers-color-scheme: dark){ :root{ --bg:#16171a; --card:#1f2024; --ink:#e9e9ec; --muted:#9aa0a6; --line:#33343a; --accent:#7aa2ff; } }
   * { box-sizing:border-box; }
   body { margin:0; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
   header { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; }
   header h1 { font-size:16px; margin:0; }
   header .sub { color:var(--muted); font-size:12px; }
-  main { padding:20px; max-width:900px; margin:0 auto; }
+  main { padding:20px; max-width:1100px; margin:0 auto; }
   .bar { display:flex; gap:8px; margin-bottom:16px; align-items:center; }
-  button { font:inherit; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink); cursor:pointer; }
-  button.primary { background:var(--accent); color:#fff; border-color:transparent; }
+  button, a.btn { font:inherit; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink); cursor:pointer; text-decoration:none; display:inline-block; }
+  button.primary, a.btn.primary { background:var(--accent); color:#fff; border-color:transparent; }
   .task { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
   .task h3 { margin:0 0 4px; font-size:14px; text-transform:uppercase; letter-spacing:.04em; }
   .task .meta { color:var(--muted); font-size:12px; margin-bottom:10px; word-break:break-all; }
@@ -23,10 +23,26 @@
   input[type=text] { font:inherit; padding:6px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); min-width:160px; }
   .empty { color:var(--muted); text-align:center; padding:40px; }
   .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .pill.live { border-color:var(--ok); color:var(--ok); }
   code { background:var(--bg); padding:1px 5px; border-radius:4px; }
   .captcha-img { display:block; margin:4px 0 6px; border:1px solid var(--line); border-radius:6px; max-width:100%; background:#fff; }
   .timer { display:inline-block; font-size:12px; color:var(--muted); margin-bottom:10px; font-variant-numeric:tabular-nums; }
   .timer.warn { color:var(--warn); font-weight:600; }
+  h2.section { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:28px 0 8px; display:flex; align-items:center; gap:10px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; font-size:13px; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .status-dot.run { background:var(--accent); }
+  .status-dot.ok { background:var(--ok); }
+  .status-dot.fail { background:var(--fail); }
+  .status-dot.wait { background:var(--muted); }
+  .dl-list { background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  .dl-row { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); font-size:13px; }
+  .dl-row:last-child { border-bottom:none; }
+  .dl-row .name { word-break:break-all; }
+  .dl-row .meta { color:var(--muted); font-size:11px; }
 </style>
 </head>
 <body>
@@ -41,6 +57,23 @@
     <span class="sub" style="margin-left:auto">auto-refresh 5s · <a href="/dashboard">project dashboard →</a></span>
   </div>
   <div id="list"></div>
+
+  <h2 class="section">Open the live browser <span class="pill" id="chrome-pill">?</span></h2>
+  <div class="task" style="margin-bottom:0;">
+    <div class="meta" style="margin-bottom:0;">
+      Each automated search opens the machine's real Chrome in a visible window while it runs
+      (not a hidden/headless one) — switch to it to watch the run live, the same way a person
+      using the site would see it. It closes itself when that search finishes. There's no single
+      standing tab to link to (a fresh window opens per search), so look for a new Chrome window
+      titled "TNREGINET" on this machine once you submit a request.
+    </div>
+  </div>
+
+  <h2 class="section">All requests <span class="pill" id="req-count">–</span></h2>
+  <div id="requests"></div>
+
+  <h2 class="section">Downloaded PDFs <span class="pill" id="dl-count">–</span></h2>
+  <div id="downloads"></div>
 </main>
 <script>
 const list = document.getElementById('list');
@@ -142,6 +175,85 @@ async function answer(id, body) {
     body: JSON.stringify(body),
   });
   load(true);
+  loadRequests(); // reflect the in_progress transition right away rather than waiting for the poll tick
+}
+
+// ---- persistent "all requests" list — server-backed, so it survives a reload ----
+const STATUS_LABEL = {
+  queued: 'queued', in_progress: 'running', needs_human: 'waiting on CAPTCHA/OTP',
+  completed: 'completed', partial: 'completed', failed: 'failed', awaiting_signature: 'awaiting signature',
+};
+function statusDotClass(s) {
+  if (s === 'failed') return 'fail';
+  if (s === 'completed' || s === 'partial') return 'ok';
+  if (s === 'queued') return 'wait';
+  return 'run';
+}
+
+async function loadRequests() {
+  const box = document.getElementById('requests');
+  let data;
+  try {
+    const res = await fetch('/ops/requests');
+    data = await res.json();
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Service not reachable.</div>';
+    return;
+  }
+  const reqs = data.requests || [];
+  document.getElementById('req-count').textContent = reqs.length + ' total';
+  if (!reqs.length) {
+    box.innerHTML = '<div class="empty" style="padding:16px;">No requests submitted yet.</div>';
+    return;
+  }
+  const rows = reqs.map((r) => {
+    const dot = statusDotClass(r.status);
+    const label = STATUS_LABEL[r.status] || r.status;
+    let outcomeCell = '<span style="color:var(--muted)">—</span>';
+    if (r.status === 'failed') {
+      outcomeCell = `<span style="color:var(--fail)">${(r.failure && r.failure.message) || 'failed'}</span>`;
+    } else if (r.outcome) {
+      outcomeCell = `${r.outcome} (${r.entryCount ?? 0})`;
+    }
+    const pdfCell = r.pdfFile
+      ? `<a class="btn" target="_blank" href="/ops/downloads/${encodeURIComponent(r.pdfFile)}">open PDF</a>`
+      : '<span style="color:var(--muted)">—</span>';
+    return `<tr>
+      <td>${r.reference || '<em>(no ref)</em>'}<div class="meta" style="font-size:11px;"><code>${r.requestId}</code></div></td>
+      <td>${r.combo || '—'}<div class="meta" style="font-size:11px;">survey ${r.surveyNumber || '—'}</div></td>
+      <td><span class="status-dot ${dot}"></span>${label}</td>
+      <td>${outcomeCell}</td>
+      <td>${pdfCell}</td>
+      <td class="meta">${new Date(r.updatedAt).toLocaleTimeString()}</td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<table><thead><tr>
+    <th>Reference / id</th><th>Search</th><th>Status</th><th>Outcome</th><th>PDF</th><th>Updated</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ---- downloaded PDFs, straight off disk ----
+async function loadDownloads() {
+  const box = document.getElementById('downloads');
+  let data;
+  try {
+    const res = await fetch('/ops/downloads');
+    data = await res.json();
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Service not reachable.</div>';
+    return;
+  }
+  const files = data.files || [];
+  document.getElementById('dl-count').textContent = files.length + (data.dir ? '' : ' (no download dir configured)');
+  if (!files.length) {
+    box.innerHTML = '<div class="empty" style="padding:16px;">No PDFs saved yet.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="dl-list">' + files.map((f) => `
+    <div class="dl-row">
+      <div class="name">${f.name}<div class="meta">${(f.sizeBytes / 1024).toFixed(0)} KB · ${new Date(f.modifiedAt).toLocaleString()}</div></div>
+      <a class="btn primary" target="_blank" href="/ops/downloads/${encodeURIComponent(f.name)}">open</a>
+    </div>`).join('') + '</div>';
 }
 
 function tickTimers() {
@@ -152,9 +264,13 @@ function tickTimers() {
   });
 }
 
-document.getElementById('refresh').onclick = () => load(true);
+document.getElementById('refresh').onclick = () => { load(true); loadRequests(); loadDownloads(); };
 load();
+loadRequests();
+loadDownloads();
 setInterval(load, 5000);
+setInterval(loadRequests, 4000);
+setInterval(loadDownloads, 8000);
 setInterval(tickTimers, 1000);
 </script>
 </body>

@@ -18,4 +18,6 @@ export interface RequestStore {
   findByIdempotencyKey(key: string): Promise<StoredRequest | undefined>;
   /** most recent completed request with the same paramHash newer than `since` (dedupe) */
   findRecentByParamHash(paramHash: string, since: Date): Promise<StoredRequest | undefined>;
+  /** every request, newest first — backs the operator console's list view */
+  list(): Promise<StoredRequest[]>;
 }

@@ -28,7 +28,17 @@ export class AutomationProvider implements EcProvider {
       password?: string;
       headless?: boolean;
       recordVideoDir?: string;
+      pdfDownloadDir?: string;
+      userDataDir?: string;
       simulateHtml?: string;
+      /** Feature-flagged 2Captcha auto-solve; see automation-worker.ts. */
+      twoCaptchaApiKey?: string;
+      /** Separate feature-flagged NopeCHA extension auto-solve; see automation-worker.ts. */
+      nopechaExtensionPath?: string;
+      /** Separate feature-flagged CDP-connect mode; see automation-worker.ts. */
+      cdpConnectUrl?: string;
+      /** Separate feature-flagged FastCaptcha auto-solve; see automation-worker.ts. */
+      fastCaptchaApiKey?: string;
     } = {},
   ) {}
 
@@ -49,6 +59,12 @@ export class AutomationProvider implements EcProvider {
           password: this.opts.password,
           headless: this.opts.headless,
           recordVideoDir: this.opts.recordVideoDir,
+          pdfDownloadDir: this.opts.pdfDownloadDir,
+          userDataDir: this.opts.userDataDir,
+          twoCaptchaApiKey: this.opts.twoCaptchaApiKey,
+          nopechaExtensionPath: this.opts.nopechaExtensionPath,
+          cdpConnectUrl: this.opts.cdpConnectUrl,
+          fastCaptchaApiKey: this.opts.fastCaptchaApiKey,
         },
         req,
         ctx,

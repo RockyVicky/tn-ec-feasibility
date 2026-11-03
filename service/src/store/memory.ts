@@ -39,4 +39,8 @@ export class MemoryRequestStore implements RequestStore {
     }
     return best;
   }
+
+  async list(): Promise<StoredRequest[]> {
+    return [...this.byId.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
 }

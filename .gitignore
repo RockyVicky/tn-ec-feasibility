@@ -11,3 +11,8 @@ submission/cover-email.md
 !.env.example
 !*.env.example
 .DS_Store
+chrome-profile/
+downloaded-ecs/
+test-samples/
+captcha-current.png
+sample-run-log.txt
